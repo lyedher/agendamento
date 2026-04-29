@@ -1,0 +1,26 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // AVISO: Estas regras são para desenvolvimento e deixam seus dados inseguros.
+    // Qualquer pessoa pode ler, escrever e apagar todos os dados no seu banco.
+    // Para produção, use regras restritivas como no exemplo comentado abaixo.
+    match /{document=**} {
+      allow read, write: if true;
+    }
+
+    /*
+    // REGRAS SEGURAS PARA PRODUÇÃO (Exemplo)
+    match /users/{userId} {
+      // Permite que qualquer um crie um usuário (cadastro)
+      allow create: if true;
+
+      // Permite que usuários autenticados leiam e atualizem apenas seus próprios dados
+      allow read, update: if request.auth != null && request.auth.uid == userId;
+
+      // Nega a exclusão de dados de usuário
+      allow delete: if false;
+    }
+    */
+  }
+}
