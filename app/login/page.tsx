@@ -125,11 +125,8 @@ export default function LoginPage() {
           </form>
         </CardContent>
         <CardFooter className="flex flex-col space-y-4 pt-4 border-t">
-          <div className="text-sm text-center text-gray-500 w-full">
-            Ainda não tem uma conta?{" "}
-            <Link href="/register" className="font-semibold text-[#79A3B1] hover:text-[#ACC18A] hover:underline transition-colors">
-              Criar conta
-            </Link>
+          <div className="text-xs text-center text-gray-500 w-full">
+            Apenas administradores podem adicionar novos policiais.
           </div>
         </CardFooter>
       </Card>

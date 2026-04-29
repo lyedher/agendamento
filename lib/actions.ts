@@ -1,18 +1,38 @@
 "use server";
 
 import { db, User } from "./db";
+import { createSession, verifySession } from "./auth";
+import { toZonedTime, formatInTimeZone } from 'date-fns-tz';
 
 export async function registerUser(formData: Omit<User, 'id'>) {
+  return { 
+    success: false, 
+    message: "Auto-cadastro desativado. Solicite seu acesso ao Administrador." 
+  };
+}
+
+export async function adminAddUser(formData: Omit<User, 'id'>) {
   try {
-    const existingUser = await db.users.findByEmail(formData.email);
+    const session = await verifySession();
+    if (session?.role !== 'admin') {
+      throw new Error("Apenas administradores podem adicionar novos policiais.");
+    }
+
+    const userEmail = formData.email || `${formData.taxId || Math.random().toString(36).substring(7)}@escala.militar`;
+    
+    const existingUser = await db.users.findByEmail(userEmail);
     if (existingUser) {
-      return { success: false, message: "Este e-mail já está em uso." };
+      return { success: false, message: "Este policial já está cadastrado (E-mail/CPF já em uso)." };
     }
     
-    const newUser = await db.users.create(formData);
+    const newUser = await db.users.create({ 
+      ...formData, 
+      email: userEmail,
+      role: formData.role || 'user' 
+    });
     return { success: true, user: newUser };
   } catch (error: any) {
-    return { success: false, message: error.message || "Erro ao criar conta." };
+    return { success: false, message: error.message || "Erro ao criar usuário." };
   }
 }
 
@@ -22,6 +42,7 @@ export async function loginUser(email: string, passwordHash: string) {
     if (!user) {
       return { success: false, message: "Usuário não encontrado." };
     }
+    await createSession({ id: user.id, email: user.email, role: user.role });
     return { success: true, user };
   } catch (error: any) {
     return { success: false, message: error.message || "Erro no login." };
@@ -48,6 +69,10 @@ export async function updateUser(id: string, data: Partial<User>) {
 }
 export async function createSchedule(data: { scheduleName: string; startTime: string; endTime: string; capacity: number }) {
   try {
+    const session = await verifySession();
+    if (session?.role !== 'admin') {
+      throw new Error("Apenas administradores podem criar escalas.");
+    }
     const schedule = await db.schedules.create(data);
     return { success: true, schedule };
   } catch (error: any) {
@@ -66,6 +91,10 @@ export async function getSchedules() {
 
 export async function deleteSchedule(id: string) {
   try {
+    const session = await verifySession();
+    if (session?.role !== 'admin') {
+      throw new Error("Apenas administradores podem excluir escalas.");
+    }
     const deleted = await db.schedules.delete(id);
     if (!deleted) throw new Error("Escala não encontrada.");
     return { success: true };
@@ -77,7 +106,10 @@ export async function deleteSchedule(id: string) {
 function isUserOnDuty(team: string, targetDateString: string): boolean {
   if (team === "ADM") return false;
   
-  const baseline = new Date(2026, 4, 1, 8, 0, 0); // May 1st 2026
+  const timeZone = 'America/Sao_Paulo';
+  const baselineString = '2026-05-01T08:00:00-03:00'; // May 1st 2026 08:00 BRT
+  const baseline = toZonedTime(baselineString, timeZone);
+  
   const teamOffsets: Record<string, number> = {
     "Alfa": 0,
     "Bravo": 1,
@@ -87,8 +119,8 @@ function isUserOnDuty(team: string, targetDateString: string): boolean {
   
   if (!(team in teamOffsets)) return false;
   
-  const target = new Date(targetDateString);
-  target.setHours(8, 0, 0, 0);
+  const target = toZonedTime(targetDateString, timeZone);
+  target.setHours(8, 0, 0, 0); // Consider start of duty
   
   const diffTime = target.getTime() - baseline.getTime();
   const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));

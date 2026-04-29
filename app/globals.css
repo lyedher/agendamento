@@ -4,30 +4,50 @@
 
 @layer base {
   :root {
-    --background: 210 20% 98%;
+    --background: 210 50% 98%;
     --foreground: 222.2 84% 4.9%;
     --card: 0 0% 100%;
     --card-foreground: 222.2 84% 4.9%;
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
-    --primary: 194 27% 58%; /* #79A3B1 */
+    --primary: 221.2 83.2% 53.3%; /* Mais vibrante */
     --primary-foreground: 210 40% 98%;
     --secondary: 210 40% 96.1%;
     --secondary-foreground: 222.2 47.4% 11.2%;
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 82 30% 65%; /* #ACC18A */
+    --accent: 210 40% 96.1%;
     --accent-foreground: 222.2 47.4% 11.2%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 194 27% 58%;
-    --radius: 0.75rem;
+    --ring: 221.2 83.2% 53.3%;
+    --radius: 1rem;
   }
 }
 
 body {
   font-family: 'Inter', sans-serif;
-  @apply bg-[#F0F4F5] text-foreground;
+  @apply bg-slate-50 text-foreground min-h-screen relative overflow-x-hidden;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle at 50% 50%, rgba(121, 163, 177, 0.15), rgba(172, 193, 138, 0.05) 40%, transparent 60%);
+  z-index: -1;
+  pointer-events: none;
+}
+
+.glass-panel {
+  @apply bg-white/40 backdrop-blur-xl border border-white/60 shadow-lg;
+}
+
+.glass-card {
+  @apply bg-white/60 backdrop-blur-md border border-white/50 shadow-md hover:shadow-xl transition-all duration-300;
 }

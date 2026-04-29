@@ -15,6 +15,8 @@ export interface User {
   passwordHash?: string; 
   photo?: string;
   sortOrder?: number;
+  role?: 'admin' | 'user';
+  fichaData?: string;
 }
 
 export interface Schedule {
