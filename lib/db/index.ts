@@ -1,3 +1,4 @@
+// Force reload comment - v2
 import fs from 'fs';
 import path from 'path';
 
@@ -19,13 +20,18 @@ export interface User {
   fichaData?: string;
 }
 
-export interface Schedule {
+export interface AppSettings {
   id: string;
-  scheduleName: string;
-  startTime: string;
-  endTime: string;
-  capacity: number;
-  userIds: string[];
+  ac4Rates: {
+    blueDay: number;
+    blueNight: number;
+    redDay: number;
+    redNight: number;
+  };
+  maxMonthlySlots: number;
+  openDateTime: string; // ISO string
+  closeDateTime: string; // ISO string
+  inviteCode?: string;
 }
 
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://gqdrlkwyxkqklmsjyhfq.supabase.co';
@@ -33,6 +39,7 @@ const SUPABASE_KEY = process.env.SUPABASE_KEY || 'sb_publishable_LSgNyMz2kFxGXpP
 
 const DB_FILE = path.join(process.cwd(), 'lib', 'db', 'users.json');
 const SCHEDULES_FILE = path.join(process.cwd(), 'lib', 'db', 'schedules.json');
+const SETTINGS_FILE = path.join(process.cwd(), 'lib', 'db', 'settings.json');
 
 const headers = {
   'apikey': SUPABASE_KEY,
@@ -65,6 +72,36 @@ function getLocalSchedules(): Schedule[] {
 
 function saveLocalSchedules(schedules: Schedule[]) {
   fs.writeFileSync(SCHEDULES_FILE, JSON.stringify(schedules, null, 2));
+}
+
+function getLocalSettings(): AppSettings {
+  const defaultSettings: AppSettings = {
+    id: 'global',
+    ac4Rates: {
+      blueDay: 35.0,
+      blueNight: 42.0,
+      redDay: 45.0,
+      redNight: 52.0
+    },
+    maxMonthlySlots: 10,
+    openDateTime: new Date().toISOString(),
+    closeDateTime: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString()
+  };
+
+  if (!fs.existsSync(SETTINGS_FILE)) {
+    fs.writeFileSync(SETTINGS_FILE, JSON.stringify(defaultSettings, null, 2));
+    return defaultSettings;
+  }
+  const data = fs.readFileSync(SETTINGS_FILE, 'utf8');
+  return JSON.parse(data || JSON.stringify(defaultSettings));
+}
+
+function saveLocalSettings(settings: AppSettings) {
+  try {
+    fs.writeFileSync(SETTINGS_FILE, JSON.stringify(settings, null, 2));
+  } catch (err) {
+    console.error("Erro ao salvar settings.json localmente:", err);
+  }
 }
 
 export const db = {
@@ -207,6 +244,47 @@ export const db = {
         if (filtered.length === schedules.length) return false;
         saveLocalSchedules(filtered);
         return true;
+      }
+    }
+  },
+  settings: {
+    async get(): Promise<AppSettings> {
+      try {
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/settings?id=eq.global`, {
+          headers
+        });
+        if (!res.ok) throw new Error();
+        const data = await res.json();
+        if (data.length === 0) throw new Error();
+        return data[0];
+      } catch {
+        return getLocalSettings();
+      }
+    },
+    async update(data: Partial<AppSettings>): Promise<AppSettings> {
+      try {
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/settings?id=eq.global`, {
+          method: 'PATCH',
+          headers,
+          body: JSON.stringify(data)
+        });
+        
+        if (res.ok) {
+          const updated = await res.json();
+          if (updated && updated[0]) return updated[0];
+        }
+        
+        // Fallback to local if Supabase fails or doesn't have the record
+        const settings = getLocalSettings();
+        const newSettings = { ...settings, ...data };
+        saveLocalSettings(newSettings);
+        return newSettings;
+      } catch (error) {
+        console.error("Erro ao atualizar configurações (Supabase), usando local:", error);
+        const settings = getLocalSettings();
+        const newSettings = { ...settings, ...data };
+        saveLocalSettings(newSettings);
+        return newSettings;
       }
     }
   }

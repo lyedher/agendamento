@@ -14,7 +14,7 @@ export async function GET() {
   
   const users = JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
   let migrated = 0;
-  let errors: string[] = [];
+  const errors: string[] = [];
 
   for (const u of users) {
     try {

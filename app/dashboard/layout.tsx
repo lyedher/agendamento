@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Calendar, Users, LogOut, Shield, Clock, Plus, Calculator, FileText } from "lucide-react";
+import { Calendar, Users, LogOut, Shield, Clock, Plus, Calculator, FileText, ClipboardList, User, Instagram, MessageCircle } from "lucide-react";
 import { getUsers, getSchedules, updateUser } from "@/lib/actions";
 
 export default function DashboardLayout({
@@ -113,7 +113,7 @@ export default function DashboardLayout({
     if (!simStart || !simEnd) return;
 
     const start = new Date(simStart);
-    let end = new Date(simEnd);
+    const end = new Date(simEnd);
     if (end <= start) {
       // Caso o horário final seja menor ou igual ao inicial, assume que cruzou a meia-noite
       end.setDate(end.getDate() + 1);
@@ -123,7 +123,7 @@ export default function DashboardLayout({
     let totalHours = 0, totalValue = 0;
     let blueDay = 0, blueNight = 0, redDay = 0, redNight = 0;
 
-    let current = new Date(start);
+    const current = new Date(start);
     while (current < end) {
       const hour = current.getHours();
       const dayOfWeek = current.getDay();
@@ -185,7 +185,7 @@ export default function DashboardLayout({
       const start = new Date(s.startTime);
       const end = new Date(s.endTime);
       
-      let current = new Date(start);
+      const current = new Date(start);
       while (current < end) {
         const hour = current.getHours();
         const dayOfWeek = current.getDay();
@@ -346,7 +346,49 @@ export default function DashboardLayout({
             </div>
 
             {isUserMenuOpen && (
-              <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-2xl border p-1.5 z-[110] animate-in slide-in-from-top-2 duration-150">
+              <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-xl shadow-2xl border p-2 z-[110] animate-in slide-in-from-top-2 duration-150">
+                <div className="px-3 py-2 mb-1 border-b sm:hidden">
+                  <span className="block font-bold text-sm text-gray-900">{currentUser.rank} {currentUser.nickname}</span>
+                  <span className="block text-[10px] text-gray-500">RG: {formatRG(currentUser.rg)}</span>
+                </div>
+
+                <div className="px-3 py-1.5 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                  Navegação
+                </div>
+
+                <button 
+                  className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-gray-700 hover:bg-[#79A3B1]/10 rounded-lg transition-colors font-semibold"
+                  onClick={() => {
+                    setIsUserMenuOpen(false);
+                    router.push("/dashboard");
+                  }}
+                >
+                  <ClipboardList className="h-4 w-4 text-[#79A3B1]" />
+                  Visão Geral
+                </button>
+
+                <button 
+                  className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-gray-700 hover:bg-[#79A3B1]/10 rounded-lg transition-colors font-semibold"
+                  onClick={() => {
+                    setIsUserMenuOpen(false);
+                    router.push("/dashboard/perfil");
+                  }}
+                >
+                  <User className="h-4 w-4 text-[#79A3B1]" />
+                  Meu Perfil
+                </button>
+
+                <button 
+                  className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-gray-700 hover:bg-[#79A3B1]/10 rounded-lg transition-colors font-semibold"
+                  onClick={() => {
+                    setIsUserMenuOpen(false);
+                    router.push("/dashboard/agendamento");
+                  }}
+                >
+                  <Plus className="h-4 w-4 text-[#79A3B1]" />
+                  Agendar Escala
+                </button>
+
                 <button 
                   className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-gray-700 hover:bg-[#79A3B1]/10 rounded-lg transition-colors font-semibold"
                   onClick={() => {
@@ -358,7 +400,6 @@ export default function DashboardLayout({
                   Painel Administrativo
                 </button>
 
-                {/* Novos atalhos serão acrescentados aqui */}
                 <div className="px-3 py-1.5 text-[10px] font-bold text-gray-400 uppercase tracking-wider border-t mt-1">
                   Atalhos Rápidos
                 </div>
@@ -386,14 +427,6 @@ export default function DashboardLayout({
                 </button>
                 
                 <button 
-                  className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-gray-400 cursor-not-allowed rounded-lg font-semibold"
-                  disabled
-                >
-                  <Plus className="h-4 w-4 text-gray-300" />
-                  Novo Atalho
-                </button>
-                
-                <button 
                   className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors font-semibold border-t mt-1 pt-2.5"
                   onClick={() => {
                     setIsUserMenuOpen(false);
@@ -412,22 +445,7 @@ export default function DashboardLayout({
       {/* Main Layout */}
       <div className="flex-1 flex max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 gap-8">
         {/* Sidebar */}
-        <aside className="w-64 hidden md:block shrink-0">
-          <nav className="space-y-1">
-            <Link href="/dashboard" className="flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg bg-[#79A3B1]/10 text-[#79A3B1] transition-colors">
-              <Clock className="h-5 w-5" />
-              Dashboard
-            </Link>
-            <Link href="#" className="flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg text-gray-700 hover:bg-gray-100 transition-colors">
-              <Calendar className="h-5 w-5" />
-              Minha Escala
-            </Link>
-            <Link href="/admin/dashboard" className="flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg text-gray-700 hover:bg-gray-100 transition-colors">
-              <Shield className="h-5 w-5" />
-              Administração
-            </Link>
-          </nav>
-        </aside>
+        
 
         {/* Content */}
         <main className="flex-1 bg-white rounded-2xl shadow-xl border p-6 md:p-8 animate-in fade-in duration-500">

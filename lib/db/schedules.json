@@ -5,7 +5,9 @@
     "endTime": "2026-04-03T04:00:00.000Z",
     "capacity": 2,
     "id": "bws5p",
-    "userIds": []
+    "userIds": [
+      "yaphob"
+    ]
   },
   {
     "scheduleName": "vespertina",

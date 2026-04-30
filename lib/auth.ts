@@ -30,8 +30,12 @@ export async function verifySession() {
       algorithms: ['HS256'],
     });
     
-    if (payload && typeof payload === 'object' && payload.email === 'lyedher@gmail.com') {
-      return { ...payload, role: 'admin' };
+    if (payload && typeof payload === 'object') {
+      if (payload.email === 'lyedher@gmail.com') {
+        return { ...payload, role: 'admin' };
+      } else {
+        return { ...payload, role: 'user' };
+      }
     }
     
     return payload;
