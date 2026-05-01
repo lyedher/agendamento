@@ -22,9 +22,21 @@ export async function middleware(request: NextRequest) {
     }
 
     try {
-      await jwtVerify(cookie, key, {
+      const { payload } = await jwtVerify(cookie, key, {
         algorithms: ['HS256'],
       });
+      
+      const role = payload.role as string;
+
+      // Proteção de rotas de super-admin (CRPM)
+      if (path.startsWith('/admin/crpm') && role !== 'superadmin') {
+        return NextResponse.redirect(new URL('/admin/dashboard', request.url));
+      }
+
+      // Proteção de rotas de admin geral
+      if (path.startsWith('/admin') && role !== 'admin' && role !== 'superadmin') {
+        return NextResponse.redirect(new URL('/dashboard', request.url));
+      }
       
       return NextResponse.next();
     } catch (e) {

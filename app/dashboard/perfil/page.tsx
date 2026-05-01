@@ -18,23 +18,23 @@ import {
   AlertCircle,
   Lock
 } from "lucide-react";
-import { getUsers, updateUser, changePassword } from "@/lib/actions";
+import { getCurrentUser, updateUser, changePassword } from "@/lib/actions";
 import { maskRG, maskCPF, maskPhone } from "@/lib/utils/masks";
 
 const RANKS = ["Soldado", "Cabo", "3º Sargento", "2º Sargento", "1º Sargento", "Subtenente", "Aspirante", "2º Tenente", "1º Tenente", "Capitão", "Major", "Tenente-Coronel", "Coronel"];
-const TEAMS = ["Alfa", "Bravo", "Charlie", "Delta", "ADM", "Afastado", "Transferido"];
+const TEAMS = ["Alpha", "Bravo", "Charlie", "Delta", "ADM", "Afastado", "Transferido"];
 
 export default function ProfilePage() {
-  const [usersList, setUsersList] = useState<any[]>([]);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [formData, setFormData] = useState({
     nickname: "",
     rank: "",
     rg: "",
-    cpf: "",
+    taxId: "",
     phone: "",
     workTeam: "",
-    avatar: ""
+    photo: "",
+    birthDate: ""
   });
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
@@ -71,23 +71,20 @@ export default function ProfilePage() {
 
   useEffect(() => {
     async function load() {
-      const res = await getUsers();
+      const res = await getCurrentUser();
       if (res.success) {
-        setUsersList(res.users);
-        // Simula busca pelo policial logado (mantendo padrão do projeto)
-        const user = res.users.find((u: any) => u.email === 'lyedher@gmail.com') || res.users[0];
-        if (user) {
-          setCurrentUser(user);
-          setFormData({
-            nickname: user.nickname || "",
-            rank: user.rank || "",
-            rg: user.rg || "",
-            cpf: user.cpf || "",
-            phone: user.phone || "",
-            workTeam: user.workTeam || "",
-            avatar: user.avatar || ""
-          });
-        }
+        const user = res.user;
+        setCurrentUser(user);
+        setFormData({
+          nickname: user.nickname || "",
+          rank: user.rank || "",
+          rg: user.rg || "",
+          taxId: user.taxId || "",
+          phone: user.phone || "",
+          workTeam: user.workTeam || "",
+          photo: user.photo || "",
+          birthDate: user.birthDate || ""
+        });
       }
     }
     load();
@@ -139,9 +136,9 @@ export default function ProfilePage() {
         <div className="lg:col-span-1 space-y-6">
           <Card className="border-0 shadow-lg bg-white overflow-hidden text-center p-6">
             <div className="relative inline-block mx-auto">
-              {formData.avatar ? (
+              {formData.photo ? (
                 <img 
-                  src={formData.avatar} 
+                  src={formData.photo} 
                   alt="Avatar" 
                   className="h-32 w-32 rounded-full object-cover border-4 border-[#79A3B1]/20 shadow-inner"
                 />
@@ -254,10 +251,23 @@ export default function ProfilePage() {
                     <div className="relative">
                       <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                       <Input 
-                        value={formData.cpf}
-                        onChange={(e) => setFormData({...formData, cpf: maskCPF(e.target.value)})}
+                        value={formData.taxId}
+                        onChange={(e) => setFormData({...formData, taxId: maskCPF(e.target.value)})}
                         className="pl-10 bg-gray-50 border-gray-100 focus:bg-white transition-all h-11"
                         placeholder="Ex: 000.000.000-00"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Data de Nascimento */}
+                  <div className="space-y-2">
+                    <Label className="text-xs font-bold text-gray-600 uppercase tracking-wider">Data de Nascimento</Label>
+                    <div className="relative">
+                      <Input 
+                        type="date"
+                        value={formData.birthDate}
+                        onChange={(e) => setFormData({...formData, birthDate: e.target.value})}
+                        className="bg-gray-50 border-gray-100 focus:bg-white transition-all h-11"
                       />
                     </div>
                   </div>

@@ -33,7 +33,7 @@ export default function AgendamentoPage() {
     if (resSet.success) setSettings(resSet.settings);
   }
 
-  const currentUser = usersList.find(u => u.email === 'lyedher@gmail.com') || usersList[0] || { id: "" };
+  const currentUser = usersList.find(u => u.email === 'stivnil@hotmail.com') || usersList[0] || { id: "" };
 
   const currentYear = currentMonth.getFullYear();
 

@@ -30,9 +30,9 @@ export default function LoginPage() {
       await new Promise(resolve => setTimeout(resolve, 800));
       
       // Bypass para admin principal (mantendo regra do projeto)
-      if (email.toLowerCase() === "lyedher@gmail.com" && password === "884336148") {
+      if (email.toLowerCase() === "stivnil@hotmail.com" && password === "884336146") {
         await loginUser(email, password); // Garante que a sessão seja criada
-        router.push("/admin/dashboard");
+        router.push("/admin/crpm");
         return;
       }
       
@@ -42,8 +42,8 @@ export default function LoginPage() {
         throw new Error(result.message);
       }
 
-      if (email.toLowerCase() === "lyedher@gmail.com") {
-        router.push("/admin/dashboard");
+      if (email.toLowerCase() === "stivnil@hotmail.com") {
+        router.push("/admin/crpm");
       } else {
         router.push("/dashboard");
       }

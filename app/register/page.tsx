@@ -8,11 +8,11 @@ import { ShieldAlert, ArrowLeft, Building2, UserPlus2, CheckCircle2, ShieldCheck
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { publicRegisterUser, getSettings } from "@/lib/actions";
+import { publicRegisterUser, validateInviteCode } from "@/lib/actions";
 import { maskRG, maskCPF, maskPhone } from "@/lib/utils/masks";
 
 const RANKS = ["Soldado", "Cabo", "3º Sargento", "2º Sargento", "1º Sargento", "Subtenente", "Aspirante", "2º Tenente", "1º Tenente", "Capitão", "Major", "Tenente-Coronel", "Coronel"];
-const TEAMS = ["Alfa", "Bravo", "Charlie", "Delta", "ADM"];
+const TEAMS = ["Alpha", "Bravo", "Charlie", "Delta", "ADM"];
 
 function RegisterForm() {
   const router = useRouter();
@@ -22,13 +22,14 @@ function RegisterForm() {
   const [isValidCode, setIsValidCode] = useState<boolean | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [unitName, setUnitName] = useState("");
   const [error, setError] = useState("");
 
   const [formData, setFormData] = useState({
     fullName: "",
     nickname: "",
     rank: "Soldado",
-    workTeam: "Alfa",
+    workTeam: "Alpha",
     taxId: "",
     rg: "",
     phone: "",
@@ -39,29 +40,31 @@ function RegisterForm() {
   });
 
   useEffect(() => {
-    async function validate() {
+    async function checkCode() {
       if (!inviteCode) {
         setIsValidCode(false);
         setIsLoading(false);
         return;
       }
-      const res = await getSettings();
-      if (res.success && res.settings.inviteCode === inviteCode) {
-        setIsValidCode(true);
-      } else {
+      try {
+        const result = await validateInviteCode(inviteCode);
+        setIsValidCode(result.valid);
+        setUnitName(result.unitName || "");
+      } catch (err) {
         setIsValidCode(false);
+      } finally {
+        setIsLoading(false);
       }
-      setIsLoading(false);
     }
-    validate();
+    checkCode();
   }, [inviteCode]);
 
-  const handleRegister = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-
+    
     if (formData.password !== formData.confirmPassword) {
-      setError("As senhas não coincidem.");
+      setError("As senhas não conferem.");
       return;
     }
 
@@ -71,111 +74,90 @@ function RegisterForm() {
     }
 
     setIsSubmitting(true);
-    const res = await publicRegisterUser(formData, inviteCode || "");
-    
-    if (res.success) {
-      router.push("/login?registered=true");
-    } else {
-      setError(res.message);
+    try {
+      const result = await publicRegisterUser(formData, inviteCode || "");
+
+      if (result.success) {
+        router.push("/login?registered=true");
+      } else {
+        setError(result.message || "Erro ao realizar cadastro.");
+      }
+    } catch (err: any) {
+      setError("Falha na conexão com o servidor.");
+    } finally {
       setIsSubmitting(false);
     }
   };
 
   if (isLoading) {
     return (
-      <main className="min-h-screen flex items-center justify-center p-4 bg-[#F0F4F5]">
+      <div className="min-h-screen flex items-center justify-center bg-[#F0F4F5]">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="h-10 w-10 text-[#79A3B1] animate-spin" />
-          <p className="text-sm font-bold text-gray-400 uppercase tracking-widest">Validando Convite...</p>
+          <p className="text-gray-500 font-bold animate-pulse">Validando convite...</p>
         </div>
-      </main>
+      </div>
     );
   }
 
-  // Se NÃO houver código ou código inválido, mostra a página de restrição
-  if (!isValidCode) {
+  if (isValidCode === false) {
     return (
-      <main className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden" 
-        style={{ background: 'radial-gradient(circle at bottom left, #F0F4F5 0%, #79A3B1 100%)' }}>
-        
-        <div className="absolute top-[-5%] left-[-5%] w-[30%] h-[30%] bg-white/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-[-5%] right-[-5%] w-[30%] h-[30%] bg-[#ACC18A]/10 rounded-full blur-3xl" />
+      <div className="min-h-screen flex items-center justify-center bg-[#F0F4F5] p-4">
+        <Card className="max-w-md w-full border-0 shadow-2xl rounded-3xl animate-in fade-in zoom-in duration-500">
+          <CardHeader className="text-center space-y-4">
+            <div className="mx-auto w-16 h-16 bg-red-50 rounded-2xl flex items-center justify-center">
+              <ShieldAlert className="h-10 w-10 text-red-500" />
+            </div>
+            <CardTitle className="text-2xl font-black text-gray-800">Convite Inválido</CardTitle>
+            <CardDescription className="text-gray-500 font-medium">
+              O link utilizado é inválido ou expirou. Solicite um novo link ao administrador da sua unidade.
+            </CardDescription>
+          </CardHeader>
+          <CardFooter>
+            <Link href="/login" className="w-full">
+              <Button variant="outline" className="w-full h-12 rounded-xl border-2 hover:bg-gray-50 font-bold">
+                <ArrowLeft className="mr-2 h-4 w-4" /> Voltar para o Login
+              </Button>
+            </Link>
+          </CardFooter>
+        </Card>
+      </div>
+    );
+  }
 
-        <div className="w-full max-w-lg relative z-10 animate-in fade-in slide-in-from-top-4 duration-1000">
-          <Card className="border-0 shadow-[0_20px_50px_rgba(0,0,0,0.1)] bg-white/95 backdrop-blur-xl rounded-[2.5rem] overflow-hidden">
-            <CardHeader className="p-10 pb-6 text-center space-y-4">
-              <div className="mx-auto w-20 h-20 bg-orange-50 rounded-3xl flex items-center justify-center mb-2 transform rotate-6 hover:rotate-0 transition-transform duration-500 shadow-inner">
-                <ShieldAlert className="h-10 w-10 text-orange-500" />
-              </div>
-              <div className="space-y-2">
-                <CardTitle className="text-3xl font-black text-gray-900 tracking-tight" style={{ fontFamily: 'Space Grotesk, sans-serif' }}>
-                  CADASTRO <span className="text-orange-500">RESTRITO</span>
+  return (
+    <main className="min-h-screen bg-[#F0F4F5] py-12 px-4 flex items-center justify-center relative overflow-hidden">
+      <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-[#79A3B1]/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+      <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-[#ACC18A]/5 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
+
+      <div className="w-full max-w-4xl relative z-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
+        <Card className="border-0 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.1)] rounded-[40px] overflow-hidden bg-white/80 backdrop-blur-xl border border-white/20">
+          <form onSubmit={handleSubmit}>
+            <div className="h-2 bg-gradient-to-r from-[#79A3B1] to-[#ACC18A]" />
+            <CardHeader className="p-8 pb-4 text-center md:text-left md:flex-row md:items-center md:justify-between gap-6">
+              <div className="space-y-1">
+                <div className="flex items-center justify-center md:justify-start gap-2 text-[#79A3B1] font-black uppercase tracking-tighter text-sm mb-2">
+                  <Building2 className="h-4 w-4" />
+                  {unitName || "Unidade Militar"}
+                </div>
+                <CardTitle className="text-3xl font-black text-gray-900 tracking-tight flex items-center justify-center md:justify-start gap-3">
+                  <UserPlus2 className="h-8 w-8 text-[#79A3B1]" />
+                  Solicitar Acesso
                 </CardTitle>
-                <CardDescription className="text-base font-medium text-gray-500">
-                  Acesso exclusivo para Policiais Militares ativos da Unidade.
+                <CardDescription className="text-gray-500 font-medium text-lg">
+                  Preencha os dados abaixo para integrar o sistema.
                 </CardDescription>
               </div>
+              <Link href="/login" className="hidden md:block">
+                <Button variant="ghost" className="rounded-xl font-bold text-gray-400 hover:text-[#79A3B1]">
+                  <ArrowLeft className="mr-2 h-4 w-4" /> Login
+                </Button>
+              </Link>
             </CardHeader>
 
-            <CardContent className="px-10 pb-8 space-y-8">
-              <div className="bg-gray-50/80 rounded-[2rem] p-8 border border-gray-100 space-y-6">
-                <p className="text-gray-600 text-sm leading-relaxed text-center font-medium">
-                  O auto-cadastro direto está desativado. 
-                  Se você recebeu um link de convite, certifique-se de usá-lo corretamente.
-                </p>
-                
-                <div className="space-y-4">
-                  <div className="flex items-start gap-4">
-                    <div className="w-8 h-8 rounded-full bg-white shadow-sm flex items-center justify-center flex-shrink-0 text-xs font-black text-[#79A3B1] border border-gray-100">01</div>
-                    <div>
-                      <h4 className="text-sm font-bold text-gray-800">Solicite o Link</h4>
-                      <p className="text-xs text-gray-500 mt-0.5">Peça o link de convite ao Administrador da sua Unidade.</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-4">
-                    <div className="w-8 h-8 rounded-full bg-white shadow-sm flex items-center justify-center flex-shrink-0 text-xs font-black text-[#79A3B1] border border-gray-100">02</div>
-                    <div>
-                      <h4 className="text-sm font-bold text-gray-800">Complete seu Perfil</h4>
-                      <p className="text-xs text-gray-500 mt-0.5">Com o link, você mesmo preenche seus dados e define sua senha.</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-
-            <CardFooter className="px-10 pb-10 flex flex-col space-y-4">
-              <Button asChild variant="ghost" className="w-full h-14 rounded-2xl font-bold text-gray-500 hover:text-[#79A3B1] hover:bg-[#79A3B1]/5 transition-all">
-                <Link href="/login" className="flex items-center justify-center gap-2">
-                  <ArrowLeft className="h-5 w-5" />
-                  Voltar para o Login
-                </Link>
-              </Button>
-            </CardFooter>
-          </Card>
-        </div>
-      </main>
-    );
-  }
-
-  // Se houver código VÁLIDO, mostra o formulário de cadastro completo
-  return (
-    <main className="min-h-screen py-12 px-4 bg-[#F0F4F5] relative overflow-hidden">
-      <div className="max-w-2xl mx-auto relative z-10">
-        <div className="text-center mb-8 space-y-2">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-[#79A3B1] shadow-xl mb-4 transform -rotate-3">
-            <UserPlus2 className="h-8 w-8 text-white" />
-          </div>
-          <h1 className="text-3xl font-black text-gray-900 tracking-tight" style={{ fontFamily: 'Space Grotesk, sans-serif' }}>
-            CADASTRO DE MILITAR
-          </h1>
-          <p className="text-gray-500 font-medium">Preencha seus dados para acessar o sistema de escalas</p>
-        </div>
-
-        <Card className="border-0 shadow-2xl rounded-[2rem] overflow-hidden bg-white/90 backdrop-blur-md">
-          <form onSubmit={handleRegister}>
-            <CardContent className="p-8 space-y-6">
+            <CardContent className="p-8">
               {error && (
-                <div className="p-4 bg-red-50 border border-red-100 rounded-2xl flex items-center gap-3 text-red-700 text-sm font-bold animate-in shake-1">
+                <div className="p-4 bg-red-50 border border-red-100 rounded-2xl flex items-center gap-3 text-red-700 text-sm font-bold animate-in shake-1 mb-6">
                   <AlertCircle className="h-5 w-5" />
                   {error}
                 </div>
@@ -189,7 +171,7 @@ function RegisterForm() {
                     <Input 
                       required value={formData.fullName}
                       onChange={(e) => setFormData({...formData, fullName: e.target.value})}
-                      className="pl-10 h-11 bg-gray-50 border-gray-100 rounded-xl focus:bg-white"
+                      className="pl-10 h-11 bg-gray-50 border-gray-100 rounded-xl focus:bg-white transition-all shadow-sm"
                       placeholder="Nome completo do militar"
                     />
                   </div>
@@ -202,7 +184,7 @@ function RegisterForm() {
                     <Input 
                       required value={formData.nickname}
                       onChange={(e) => setFormData({...formData, nickname: e.target.value})}
-                      className="pl-10 h-11 bg-gray-50 border-gray-100 rounded-xl focus:bg-white"
+                      className="pl-10 h-11 bg-gray-50 border-gray-100 rounded-xl focus:bg-white transition-all shadow-sm"
                       placeholder="Ex: Sgt Lyedher"
                     />
                   </div>
@@ -211,7 +193,7 @@ function RegisterForm() {
                 <div className="space-y-2">
                   <Label className="text-xs font-bold text-gray-400 uppercase ml-1">Posto / Graduação</Label>
                   <select 
-                    className="w-full h-11 px-4 bg-gray-50 border border-gray-100 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#79A3B1]/20 focus:border-[#79A3B1] transition-all"
+                    className="w-full h-11 px-4 bg-gray-50 border border-gray-100 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#79A3B1]/20 focus:border-[#79A3B1] transition-all shadow-sm"
                     value={formData.rank}
                     onChange={(e) => setFormData({...formData, rank: e.target.value})}
                   >
@@ -222,7 +204,7 @@ function RegisterForm() {
                 <div className="space-y-2">
                   <Label className="text-xs font-bold text-gray-400 uppercase ml-1">Equipe de Trabalho</Label>
                   <select 
-                    className="w-full h-11 px-4 bg-gray-50 border border-gray-100 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#79A3B1]/20 focus:border-[#79A3B1] transition-all"
+                    className="w-full h-11 px-4 bg-gray-50 border border-gray-100 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#79A3B1]/20 focus:border-[#79A3B1] transition-all shadow-sm"
                     value={formData.workTeam}
                     onChange={(e) => setFormData({...formData, workTeam: e.target.value})}
                   >
@@ -237,7 +219,7 @@ function RegisterForm() {
                     <Input 
                       required value={formData.taxId}
                       onChange={(e) => setFormData({...formData, taxId: maskCPF(e.target.value)})}
-                      className="pl-10 h-11 bg-gray-50 border-gray-100 rounded-xl focus:bg-white"
+                      className="pl-10 h-11 bg-gray-50 border-gray-100 rounded-xl focus:bg-white transition-all shadow-sm"
                       placeholder="000.000.000-00"
                     />
                   </div>
@@ -250,7 +232,7 @@ function RegisterForm() {
                     <Input 
                       required value={formData.rg}
                       onChange={(e) => setFormData({...formData, rg: maskRG(e.target.value)})}
-                      className="pl-10 h-11 bg-gray-50 border-gray-100 rounded-xl focus:bg-white"
+                      className="pl-10 h-11 bg-gray-50 border-gray-100 rounded-xl focus:bg-white transition-all shadow-sm"
                       placeholder="Ex: 12.345"
                     />
                   </div>
@@ -263,7 +245,7 @@ function RegisterForm() {
                     <Input 
                       required value={formData.phone}
                       onChange={(e) => setFormData({...formData, phone: maskPhone(e.target.value)})}
-                      className="pl-10 h-11 bg-gray-50 border-gray-100 rounded-xl focus:bg-white"
+                      className="pl-10 h-11 bg-gray-50 border-gray-100 rounded-xl focus:bg-white transition-all shadow-sm"
                       placeholder="(62) 99999-0000"
                     />
                   </div>
@@ -276,7 +258,7 @@ function RegisterForm() {
                     <Input 
                       type="email" required value={formData.email}
                       onChange={(e) => setFormData({...formData, email: e.target.value})}
-                      className="pl-10 h-11 bg-gray-50 border-gray-100 rounded-xl focus:bg-white"
+                      className="pl-10 h-11 bg-gray-50 border-gray-100 rounded-xl focus:bg-white transition-all shadow-sm"
                       placeholder="policial@pm.go.gov.br"
                     />
                   </div>
@@ -289,7 +271,7 @@ function RegisterForm() {
                     <Input 
                       type="password" required value={formData.password}
                       onChange={(e) => setFormData({...formData, password: e.target.value})}
-                      className="pl-10 h-11 bg-gray-50 border-gray-100 rounded-xl focus:bg-white"
+                      className="pl-10 h-11 bg-gray-50 border-gray-100 rounded-xl focus:bg-white transition-all shadow-sm"
                       placeholder="Mínimo 6 caracteres"
                     />
                   </div>
@@ -302,7 +284,7 @@ function RegisterForm() {
                     <Input 
                       type="password" required value={formData.confirmPassword}
                       onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})}
-                      className="pl-10 h-11 bg-gray-50 border-gray-100 rounded-xl focus:bg-white"
+                      className="pl-10 h-11 bg-gray-50 border-gray-100 rounded-xl focus:bg-white transition-all shadow-sm"
                       placeholder="Repita sua senha"
                     />
                   </div>

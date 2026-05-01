@@ -1,0 +1,44 @@
+[
+  {
+    "id": "8bpm",
+    "name": "8º Batalhão de Polícia Militar",
+    "budgetLimit": 15000,
+    "currentSpend": 0
+  },
+  {
+    "id": "27bpm",
+    "name": "27º Batalhão de Polícia Militar",
+    "budgetLimit": 15000,
+    "currentSpend": 0
+  },
+  {
+    "id": "39bpm",
+    "name": "39º Batalhão de Polícia Militar",
+    "budgetLimit": 15000,
+    "currentSpend": 0
+  },
+  {
+    "id": "41bpm",
+    "name": "41º Batalhão de Polícia Militar",
+    "budgetLimit": 15000,
+    "currentSpend": 0
+  },
+  {
+    "id": "45bpm",
+    "name": "45º Batalhão de Polícia Militar",
+    "budgetLimit": 15000,
+    "currentSpend": 0
+  },
+  {
+    "id": "25cipm",
+    "name": "25ª CIPM (HIDROLÂNDIA)",
+    "budgetLimit": 15000,
+    "currentSpend": 0
+  },
+  {
+    "id": "43cipm",
+    "name": "43ª CIPM (CPE)",
+    "budgetLimit": 15000,
+    "currentSpend": 0
+  }
+]

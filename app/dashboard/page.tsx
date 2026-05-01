@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Calendar, ClipboardList, Clock, UserCheck, Calculator, ChevronLeft, ChevronRight } from "lucide-react";
-import { getUsers, getSchedules, getSettings } from "@/lib/actions";
+import { getUsers, getSchedules, getSettings, getCurrentUser } from "@/lib/actions";
 import { calculateUserAc4Summary } from "@/lib/utils/calculations";
 import { 
   Select, 
@@ -19,20 +19,23 @@ export default function DashboardPage() {
   const [settings, setSettings] = useState<any>(null);
   const [currentMonth, setCurrentMonth] = useState(new Date());
 
+  const [currentUser, setCurrentUser] = useState<any>(null);
+
   useEffect(() => {
     async function load() {
-      const [resU, resS, resSet] = await Promise.all([getUsers(), getSchedules(), getSettings()]);
+      const [resU, resS, resSet, resMe] = await Promise.all([getUsers(), getSchedules(), getSettings(), getCurrentUser()]);
       if (resU.success) setUsersList(resU.users);
       if (resS.success) setSchedulesList(resS.schedules);
       if (resSet.success) setSettings(resSet.settings);
+      if (resMe.success) setCurrentUser(resMe.user);
     }
     load();
   }, []);
 
-  const currentUser = usersList.find(u => u.email === 'lyedher@gmail.com') || usersList[0] || { id: "" };
+  const activeUser = currentUser || { id: "" };
 
-  const ac4 = settings ? calculateUserAc4Summary(
-    currentUser.id, 
+  const ac4 = settings && activeUser.id ? calculateUserAc4Summary(
+    activeUser.id, 
     schedulesList, 
     settings.ac4Rates, 
     currentMonth.getMonth(), 
@@ -68,7 +71,7 @@ export default function DashboardPage() {
 
   const upcomingSchedules = schedulesList
     .filter(s => {
-      if (!s.userIds || !s.userIds.includes(currentUser.id)) return false;
+      if (!s.userIds || !s.userIds.includes(activeUser.id)) return false;
       return new Date(s.startTime) >= new Date();
     })
     .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
@@ -262,10 +265,10 @@ export default function DashboardPage() {
                 const dayDate = new Date(year, month, d);
                 const dayStr = dayDate.toISOString().split('T')[0];
                 const hasOrdinary = schedulesList.some(
-                  (s) => s.userIds?.includes(currentUser.id) && s.startTime?.startsWith(dayStr)
+                  (s) => s.userIds?.includes(activeUser.id) && s.startTime?.startsWith(dayStr)
                 );
                  const hasAc4 = settings ? schedulesList.some(
-                   (s) => s.userIds?.includes(currentUser.id) && 
+                   (s) => s.userIds?.includes(activeUser.id) && 
                          s.startTime?.startsWith(dayStr) && 
                          !hasOrdinary
                  ) : false;

@@ -7,7 +7,8 @@
     "id": "bws5p",
     "userIds": [
       "yaphob"
-    ]
+    ],
+    "unitId": "39bpm"
   },
   {
     "scheduleName": "vespertina",
@@ -15,7 +16,8 @@
     "endTime": "2026-04-11T04:00:00.000Z",
     "capacity": 2,
     "id": "5e4yhb",
-    "userIds": []
+    "userIds": [],
+    "unitId": "39bpm"
   },
   {
     "scheduleName": "vespertina",
@@ -23,7 +25,8 @@
     "endTime": "2026-04-19T04:00:00.000Z",
     "capacity": 2,
     "id": "49f6z",
-    "userIds": []
+    "userIds": [],
+    "unitId": "39bpm"
   },
   {
     "scheduleName": "vespertina",
@@ -31,6 +34,7 @@
     "endTime": "2026-04-27T04:00:00.000Z",
     "capacity": 2,
     "id": "iu704q",
-    "userIds": []
+    "userIds": [],
+    "unitId": "39bpm"
   }
 ]

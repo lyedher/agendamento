@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Calendar, Users, LogOut, Shield, Clock, Plus, Calculator, FileText, ClipboardList, User, Instagram, MessageCircle } from "lucide-react";
-import { getUsers, getSchedules, updateUser } from "@/lib/actions";
+import { getUsers, getSchedules, updateUser, logout, getCurrentUser } from "@/lib/actions";
 
 export default function DashboardLayout({
   children,
@@ -60,17 +60,20 @@ export default function DashboardLayout({
   const [simEnd, setSimEnd] = useState("");
   const [simResult, setSimResult] = useState<any | null>(null);
 
+  const [currentUser, setCurrentUser] = useState<any>(null);
+
   useEffect(() => {
     async function loadData() {
-      const [resUsers, resSchedules] = await Promise.all([getUsers(), getSchedules()]);
+      const [resUsers, resSchedules, resMe] = await Promise.all([getUsers(), getSchedules(), getCurrentUser()]);
       if (resUsers.success) setUsersList(resUsers.users);
       if (resSchedules.success) setSchedulesList(resSchedules.schedules);
+      if (resMe.success) setCurrentUser(resMe.user);
     }
     loadData();
   }, []);
 
-  // Simula busca pelo policial logado
-  const currentUser = usersList.find(u => u.email === 'lyedher@gmail.com') || usersList[0] || { nickname: "Policial", rg: "00.000", rank: "SD" };
+  // Use a fallback for UI while loading
+  const currentAdmin = currentUser || { nickname: "Policial", rg: "00.000", rank: "SD" };
 
   useEffect(() => {
     if (currentUser && currentUser.fichaData) {
@@ -310,7 +313,8 @@ export default function DashboardLayout({
     return { tempo, positivo, negativo, total };
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await logout();
     router.push("/login");
   };
 
@@ -327,29 +331,29 @@ export default function DashboardLayout({
           </div>
           
           <div className="relative">
-            <div 
+            <button 
               className="flex items-center gap-3 cursor-pointer hover:bg-gray-100 p-1 px-2 rounded-xl transition-all"
               onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
             >
               <div className="flex flex-col text-right text-xs text-gray-600 leading-tight hidden sm:flex">
-                <span className="font-bold text-sm text-gray-900">{currentUser.rank} {currentUser.nickname}</span>
-                <span>RG: {formatRG(currentUser.rg)}</span>
+                <span className="font-bold text-sm text-gray-900">{currentUser?.rank} {currentUser?.nickname}</span>
+                <span>RG: {currentUser ? formatRG(currentUser.rg) : "..."}</span>
               </div>
               
-              {currentUser.avatar ? (
-                <img src={currentUser.avatar} alt="Foto" className="h-9 w-9 rounded-full object-cover border border-[#79A3B1]/40 shadow-sm" />
+              {currentUser?.photo ? (
+                <img src={currentUser.photo} alt="Foto" className="h-9 w-9 rounded-full object-cover border border-[#79A3B1]/40 shadow-sm" />
               ) : (
                 <div className="h-9 w-9 rounded-full bg-[#79A3B1]/20 flex items-center justify-center border border-[#79A3B1]/40 shadow-sm">
                   <Users className="h-5 w-5 text-[#79A3B1]" />
                 </div>
               )}
-            </div>
+            </button>
 
             {isUserMenuOpen && (
               <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-xl shadow-2xl border p-2 z-[110] animate-in slide-in-from-top-2 duration-150">
                 <div className="px-3 py-2 mb-1 border-b sm:hidden">
-                  <span className="block font-bold text-sm text-gray-900">{currentUser.rank} {currentUser.nickname}</span>
-                  <span className="block text-[10px] text-gray-500">RG: {formatRG(currentUser.rg)}</span>
+                  <span className="block font-bold text-sm text-gray-900">{currentUser?.rank} {currentUser?.nickname}</span>
+                  <span className="block text-[10px] text-gray-500">RG: {currentUser ? formatRG(currentUser.rg) : "..."}</span>
                 </div>
 
                 <div className="px-3 py-1.5 text-[10px] font-bold text-gray-400 uppercase tracking-wider">

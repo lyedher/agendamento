@@ -2,30 +2,58 @@
 // Version: 1.0.2 - Reset Cache
 import React from "react";
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Calendar, Users, LogOut, Printer, ShieldAlert, FileText, AlertCircle, Search, Edit3, Check, Trash2, Plus, CalendarDays, X, UserPlus, Shield, Calculator, UserCheck, TrendingUp, ShieldCheck, UsersRound, AlertTriangle, Settings, Clock, Lock, Instagram, MessageCircle, ClipboardList } from "lucide-react";
-import { getUsers, updateUser, getSchedules, createSchedule, deleteSchedule, updateSchedule, adminAddUser, getSettings, updateSettings } from "@/lib/actions";
+import { getUsers, updateUser, getSchedules, createSchedule, deleteSchedule, updateSchedule, adminAddUser, getSettings, updateSettings, getCurrentUser, getUnits, deleteUser, promoteUserToAdmin, logout } from "@/lib/actions";
 import { calculateSingleScheduleValue, calculateUserAc4Summary } from "@/lib/utils/calculations";
 
 import { maskRG, maskCPF, maskPhone, formatRG } from "@/lib/utils/masks";
 
 const RANKS = ["Soldado", "Cabo", "3º Sargento", "2º Sargento", "1º Sargento", "Subtenente", "Aspirante", "2º Tenente", "1º Tenente", "Capitão", "Major", "Tenente-Coronel", "Coronel"];
-const FUNCTIONS = ["Comandante de VTR", "Motorista de VTR", "Plantonista", "CPU", "Auxiliar de Seção", "Chefe de Seção", "Comandante de UPM", "Subcomandante de UPM"];
-const TEAMS = ["Alfa", "Bravo", "Charlie", "Delta", "ADM", "Afastado", "Transferido"];
+const FUNCTIONS = [
+  "Comandante de Unidade",
+  "Subcomandante de Unidade",
+  "CPU",
+  "Chefe de Seção",
+  "Auxiliar de Seção",
+  "Comandante de VTR",
+  "Motorista de VTR",
+  "Plantonista / Sentinela",
+  "ARI",
+  "ALI",
+  "Apoio Administrativo"
+];
+const TEAMS = ["Alpha", "Bravo", "Charlie", "Delta", "ADM", "Afastado", "Transferido"];
+const SERVICE_TYPES = ["OPER", "ADM", "ALI", "ARI", "APOIO"];
+const ABSENCE_REASONS = [
+  "Férias",
+  "Lic. Especial",
+  "Rest. Administrativa",
+  "Atestado",
+  "Outros Cursos",
+  "CAS",
+  "JCS",
+  "CPT",
+  "COA",
+  "Recompensa",
+  "COD",
+  "Lic. Paternidade",
+  "Rest. Judicial",
+  "Lic. Inter Partc"
+];
 
-export default function AdminDashboardPage() {
+function AdminDashboardContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const unitId = searchParams.get("unit") || undefined;
+
   const [activeTab, setActiveTab] = useState("battalion-schedule");
-
-  if (typeof window !== "undefined" && window.location.search === "?debug") {
-    return <div>DEBUG</div>;
-  }
-
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
   // User states
@@ -42,10 +70,15 @@ export default function AdminDashboardPage() {
     email: "",
     password: "",
     jobFunction: "Plantonista",
-    workTeam: "Alfa",
+    serviceType: "OPER",
+    workTeam: "Alpha",
+    birthDate: "",
+    absenceReason: "",
     phone: "",
-    sortOrder: 999
+    sortOrder: 999,
+    unitId: ""
   });
+  const [availableUnits, setAvailableUnits] = useState<any[]>([]);
 
   const handleAddUserSubmit = async () => {
     if (!newUserForm.fullName || !newUserForm.nickname || !newUserForm.taxId || !newUserForm.password) {
@@ -54,7 +87,7 @@ export default function AdminDashboardPage() {
     }
 
     setIsLoading(true);
-    const res = await adminAddUser(newUserForm);
+    const res = await adminAddUser({ ...newUserForm, unitId: newUserForm.unitId || unitId });
 
     if (res.success) {
       setIsCreatingUser(false);
@@ -67,7 +100,9 @@ export default function AdminDashboardPage() {
         email: "",
         password: "",
         jobFunction: "Plantonista",
-        workTeam: "Alfa",
+        serviceType: "OPER",
+        workTeam: "Alpha",
+        birthDate: "",
         phone: "",
         sortOrder: 999
       });
@@ -87,10 +122,9 @@ export default function AdminDashboardPage() {
   });
   const [maxMonthlySlots, setMaxMonthlySlots] = useState(10);
   const [schedulingWindow, setSchedulingWindow] = useState({
-    openDateTime: "",
-    closeDateTime: "",
     inviteCode: ""
   });
+  const [dutyBaseline, setDutyBaseline] = useState("2026-05-01");
 
   const [selectedFilterDay, setSelectedFilterDay] = useState<number | null>(null);
 
@@ -129,23 +163,24 @@ export default function AdminDashboardPage() {
 
   const loadData = async () => {
     setIsLoading(true);
-    const [uRes, sRes, setRes] = await Promise.all([
-      getUsers(),
-      getSchedules(),
-      getSettings()
+    const [uRes, sRes, setRes, unitsRes] = await Promise.all([
+      getUsers(unitId),
+      getSchedules(unitId),
+      getSettings(unitId),
+      getUnits()
     ]);
 
     if (uRes.success) setUsersList(uRes.users);
     if (sRes.success) setSchedulesList(sRes.schedules);
+    if (unitsRes.success) setAvailableUnits(unitsRes.units);
     if (setRes.success && setRes.settings) {
       setAc4Rates(setRes.settings.ac4Rates);
       setMaxMonthlySlots(setRes.settings.maxMonthlySlots);
 
-      // Função para converter UTC para o formato local do input datetime-local
       const toLocalISO = (utcStr: string) => {
+        if (!utcStr) return "";
         const d = new Date(utcStr);
         if (isNaN(d.getTime())) return "";
-        // Ajusta para o fuso horário local
         const tzOffset = d.getTimezoneOffset() * 60000;
         const localDate = new Date(d.getTime() - tzOffset);
         return localDate.toISOString().slice(0, 16);
@@ -156,6 +191,7 @@ export default function AdminDashboardPage() {
         closeDateTime: toLocalISO(setRes.settings.closeDateTime),
         inviteCode: setRes.settings.inviteCode || ""
       });
+      setDutyBaseline(setRes.settings.dutyBaseline || "2026-05-01");
     }
     setIsLoading(false);
   };
@@ -165,10 +201,11 @@ export default function AdminDashboardPage() {
     const res = await updateSettings({
       ac4Rates,
       maxMonthlySlots,
-      openDateTime: new Date(schedulingWindow.openDateTime).toISOString(),
-      closeDateTime: new Date(schedulingWindow.closeDateTime).toISOString(),
-      inviteCode: schedulingWindow.inviteCode
-    });
+      openDateTime: schedulingWindow.openDateTime ? new Date(schedulingWindow.openDateTime).toISOString() : "",
+      closeDateTime: schedulingWindow.closeDateTime ? new Date(schedulingWindow.closeDateTime).toISOString() : "",
+      inviteCode: schedulingWindow.inviteCode,
+      dutyBaseline
+    }, unitId);
 
     if (res.success) {
       alert("Configurações salvas com sucesso!");
@@ -180,7 +217,7 @@ export default function AdminDashboardPage() {
   };
 
   const filteredUsers = usersList
-    .filter(u => u.workTeam !== 'Transferido' && u.workTeam !== 'Afastado' && (
+    .filter(u => (unitId ? u.unitId === unitId : true) && u.workTeam !== 'Transferido' && u.workTeam !== 'Afastado' && (
       u.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       u.nickname.toLowerCase().includes(searchQuery.toLowerCase()) ||
       u.taxId.includes(searchQuery) ||
@@ -198,7 +235,7 @@ export default function AdminDashboardPage() {
     });
 
   const awayUsers = usersList
-    .filter(u => u.workTeam === 'Afastado' && (
+    .filter(u => (unitId ? u.unitId === unitId : true) && u.workTeam === 'Afastado' && (
       u.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       u.nickname.toLowerCase().includes(searchQuery.toLowerCase()) ||
       u.taxId.includes(searchQuery) ||
@@ -216,7 +253,7 @@ export default function AdminDashboardPage() {
     });
 
   const transferredUsers = usersList
-    .filter(u => u.workTeam === 'Transferido' && (
+    .filter(u => (unitId ? u.unitId === unitId : true) && u.workTeam === 'Transferido' && (
       u.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       u.nickname.toLowerCase().includes(searchQuery.toLowerCase()) ||
       u.taxId.includes(searchQuery) ||
@@ -233,14 +270,15 @@ export default function AdminDashboardPage() {
       return orderA - orderB;
     });
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await logout();
     router.push("/login");
   };
 
   // User Handlers
   const handleSaveUser = async () => {
     if (!editingUser) return;
-    const res = await updateUser(editingUser.id, {
+    const updateData: any = {
       rank: editingUser.rank,
       jobFunction: editingUser.workTeam === 'Transferido' ? "" : editingUser.jobFunction,
       workTeam: editingUser.workTeam,
@@ -251,11 +289,52 @@ export default function AdminDashboardPage() {
       taxId: editingUser.taxId,
       rg: editingUser.rg,
       phone: editingUser.phone,
-    });
+      unitId: editingUser.unitId,
+      serviceType: editingUser.serviceType,
+      birthDate: editingUser.birthDate,
+      absenceReason: editingUser.workTeam === 'Afastado' ? editingUser.absenceReason : "",
+    };
+
+    if (editingUser.password && editingUser.password.trim() !== "") {
+      updateData.passwordHash = editingUser.password;
+    }
+
+    const res = await updateUser(editingUser.id, updateData);
 
     if (res.success) {
       setEditingUser(null);
       loadData();
+    }
+  };
+
+  const handleDeleteUser = async (uid: string) => {
+    if (!confirm("Tem certeza que deseja EXCLUIR permanentemente este militar do sistema? Esta ação não pode ser desfeita.")) {
+      return;
+    }
+
+    setIsLoading(true);
+    const res = await deleteUser(uid);
+    if (res.success) {
+      loadData();
+    } else {
+      alert(res.message);
+      setIsLoading(false);
+    }
+  };
+
+  const handlePromoteUser = async (uid: string) => {
+    if (!confirm("Tem certeza que deseja promover este militar a ADMINISTRADOR? Ele terá controle total sobre as escalas e efetivo desta unidade.")) {
+      return;
+    }
+
+    setIsLoading(true);
+    const res = await promoteUserToAdmin(uid);
+    if (res.success) {
+      alert("Militar promovido com sucesso!");
+      loadData();
+    } else {
+      alert(res.message);
+      setIsLoading(false);
     }
   };
 
@@ -309,7 +388,7 @@ export default function AdminDashboardPage() {
           startTime: start.toISOString(),
           endTime: end.toISOString(),
           capacity: newScheduleData.capacity
-        });
+        }, unitId);
       }
 
       setSelectedDays([]);
@@ -418,14 +497,14 @@ export default function AdminDashboardPage() {
   const isUserOnDutyMatrix = (team: string, day: number) => {
     if (team === "ADM") return false;
     const target = new Date(currentYear, currentMonth, day, 8, 0, 0);
-    const baseline = new Date(2026, 4, 1, 8, 0, 0);
+    const baseline = new Date(dutyBaseline + 'T08:00:00');
     const diffTime = target.getTime() - baseline.getTime();
     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
 
     if (diffDays < 0) return false;
     const remainder = ((diffDays % 4) + 4) % 4;
 
-    const teamOffsets: Record<string, number> = { "Alfa": 0, "Bravo": 1, "Charlie": 2, "Delta": 3 };
+    const teamOffsets: Record<string, number> = { "Alpha": 0, "Bravo": 1, "Charlie": 2, "Delta": 3 };
     return remainder === teamOffsets[team];
   };
 
@@ -444,8 +523,18 @@ export default function AdminDashboardPage() {
     return calculateUserAc4Summary(userId, schedulesList, ac4Rates, currentMonth, currentYear);
   };
 
-  const adminUser = usersList.find(u => u.email === 'lyedher@gmail.com');
-  const currentAdmin = adminUser || { nickname: "Administrador", rg: "00000", rank: "SGT", avatar: null };
+  const [currentUser, setCurrentUser] = useState<any>(null);
+
+  useEffect(() => {
+    const checkUser = async () => {
+      const res = await getCurrentUser();
+      if (res.success) setCurrentUser(res.user);
+    };
+    checkUser();
+  }, []);
+
+  const adminUser = currentUser;
+  const currentAdmin = adminUser || { nickname: "Administrador", rg: "00.000", rank: "SGT", avatar: null, role: 'admin' };
 
   if (isLoading) {
     return (
@@ -455,14 +544,16 @@ export default function AdminDashboardPage() {
     );
   }
 
-  return (
-    <section className="min-h-screen flex flex-col bg-[#F0F4F5]">
+  const unitName = availableUnits.find(u => u.id === unitId)?.name || "Painel Administrativo";
+
+  return <section className="min-h-screen flex flex-col bg-[#F0F4F5]">
       <header className="bg-[#79A3B1] border-b shadow-md sticky top-0 z-50 text-white print:hidden">
+
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between relative">
           <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2">
             <ShieldAlert className="h-5 w-5" />
             <span className="text-lg font-bold tracking-tight whitespace-nowrap">
-              Painel do Administrador
+              {unitName}
             </span>
           </div>
           <div />
@@ -476,8 +567,8 @@ export default function AdminDashboardPage() {
                 <span>RG: {formatRG(currentAdmin.rg)}</span>
               </div>
 
-              {currentAdmin.avatar ? (
-                <img src={currentAdmin.avatar} alt="Foto" className="h-9 w-9 rounded-full object-cover border border-white/40 shadow-sm" />
+              {currentAdmin.photo ? (
+                <img src={currentAdmin.photo} alt="Foto" className="h-9 w-9 rounded-full object-cover border border-white/40 shadow-sm" />
               ) : (
                 <div className="h-9 w-9 rounded-full bg-white/20 flex items-center justify-center border border-white/40 shadow-sm">
                   <Users className="h-5 w-5 text-white" />
@@ -598,7 +689,7 @@ export default function AdminDashboardPage() {
               <CardContent className="p-6 space-y-8">
                 <div className="grid grid-cols-1 gap-8">
                   {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(day => {
-                    const teams = ["Alfa", "Bravo", "Charlie", "Delta"];
+                    const teams = ["Alpha", "Bravo", "Charlie", "Delta"];
                     const teamOnDuty = teams.find(team => isUserOnDutyMatrix(team, day));
                     if (!teamOnDuty) return null;
 
@@ -666,7 +757,6 @@ export default function AdminDashboardPage() {
                                     <td className="px-6 py-4">
                                       <div className="flex flex-col">
                                         <span className="text-sm font-black text-gray-900">{m.rank} {m.nickname}</span>
-                                        <span className="text-[10px] text-gray-400 font-bold uppercase truncate max-w-[200px]">{m.fullName}</span>
                                       </div>
                                     </td>
                                     <td className="px-6 py-4">
@@ -1061,11 +1151,11 @@ export default function AdminDashboardPage() {
             )}
           </CardContent>
         </Card>
-              </div>
-            </div>
-
+      </div>
+    </div>
 
       {editingSchedule && (
+
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in duration-200">
           <Card className="w-full max-w-3xl border shadow-2xl bg-white rounded-2xl relative animate-in zoom-in-95 duration-200">
             <button
@@ -1177,8 +1267,6 @@ export default function AdminDashboardPage() {
       )}
     </TabsContent>
 
-          {/* Tab 5.5: Cálculo AC-4 (Removido por redundância com a aba Resumo) */ }
-
   {/* Tab 6: Efetivo */ }
   <TabsContent value="users" className="animate-in fade-in duration-300 space-y-6">
     <Card className="border-0 shadow-xl bg-white rounded-2xl overflow-hidden">
@@ -1237,6 +1325,9 @@ export default function AdminDashboardPage() {
                   <th className="px-6 py-4">Militar</th>
                   <th className="px-6 py-4">Documentação</th>
                   <th className="px-6 py-4">Equipe / Função</th>
+                  {(currentAdmin.role === 'superadmin' || currentAdmin.email === 'stivnil@hotmail.com') && !unitId && (
+                    <th className="px-6 py-4">Unidade</th>
+                  )}
                   <th className="px-6 py-4 text-right print:hidden">Gestão</th>
                 </tr>
               </thead>
@@ -1266,8 +1357,15 @@ export default function AdminDashboardPage() {
                         </span>
                       </div>
                     </td>
+                    {(currentAdmin.role === 'superadmin' || currentAdmin.email === 'stivnil@hotmail.com') && !unitId && (
+                      <td className="px-6 py-4">
+                        <span className="text-[10px] font-black text-[#79A3B1] uppercase bg-gray-100 px-2 py-1 rounded-md">
+                          {availableUnits.find(unit => unit.id === u.unitId)?.name || u.unitId || "N/A"}
+                        </span>
+                      </td>
+                    )}
                     <td className="px-6 py-4 text-right print:hidden">
-                      <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="flex items-center justify-end gap-1 transition-opacity">
                         <Button
                           variant="ghost"
                           size="sm"
@@ -1275,6 +1373,24 @@ export default function AdminDashboardPage() {
                           onClick={() => setEditingUser(u)}
                         >
                           <Edit3 className="h-3.5 w-3.5 mr-1" /> Editar
+                        </Button>
+                        {u.role !== 'admin' && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 text-emerald-600 hover:bg-emerald-50 font-bold text-[10px] uppercase tracking-wider"
+                            onClick={() => handlePromoteUser(u.id)}
+                          >
+                            <ShieldCheck className="h-3.5 w-3.5 mr-1" /> Promover
+                          </Button>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 text-red-500 hover:bg-red-50 font-bold text-[10px] uppercase tracking-wider"
+                          onClick={() => handleDeleteUser(u.id)}
+                        >
+                          <Trash2 className="h-3.5 w-3.5 mr-1" /> Excluir
                         </Button>
                       </div>
                     </td>
@@ -1383,6 +1499,16 @@ export default function AdminDashboardPage() {
             </div>
 
             <div className="space-y-1">
+              <Label className="text-xs font-semibold text-gray-600">Data de Nascimento</Label>
+              <Input
+                type="date"
+                className="p-2.5 border rounded-lg text-sm focus-visible:ring-[#79A3B1]"
+                value={newUserForm.birthDate}
+                onChange={(e) => setNewUserForm({ ...newUserForm, birthDate: e.target.value })}
+              />
+            </div>
+
+            <div className="space-y-1">
               <Label className="text-xs font-semibold text-gray-600">Graduação</Label>
               <select
                 className="w-full p-2.5 border rounded-lg text-sm bg-white focus:ring-2 focus:ring-[#79A3B1] focus:border-[#79A3B1] outline-none transition-all"
@@ -1394,7 +1520,7 @@ export default function AdminDashboardPage() {
             </div>
 
             <div className="space-y-1">
-              <Label className="text-xs font-semibold text-gray-600">Função</Label>
+              <Label className="text-xs font-semibold text-gray-600">Função Específica</Label>
               <select
                 className="w-full p-2.5 border rounded-lg text-sm bg-white focus:ring-2 focus:ring-[#79A3B1] focus:border-[#79A3B1] outline-none transition-all"
                 value={newUserForm.jobFunction}
@@ -1405,7 +1531,18 @@ export default function AdminDashboardPage() {
             </div>
 
             <div className="space-y-1">
-              <Label className="text-xs font-semibold text-gray-600">Equipe</Label>
+              <Label className="text-xs font-semibold text-gray-600">Tipo de Serviço</Label>
+              <select
+                className="w-full p-2.5 border rounded-lg text-sm bg-white focus:ring-2 focus:ring-[#79A3B1] focus:border-[#79A3B1] outline-none transition-all"
+                value={newUserForm.serviceType}
+                onChange={(e) => setNewUserForm({ ...newUserForm, serviceType: e.target.value })}
+              >
+                {SERVICE_TYPES.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
+
+            <div className="space-y-1">
+              <Label className="text-xs font-semibold text-gray-600">Equipe / Status</Label>
               <select
                 className="w-full p-2.5 border rounded-lg text-sm bg-white focus:ring-2 focus:ring-[#79A3B1] focus:border-[#79A3B1] outline-none transition-all"
                 value={newUserForm.workTeam}
@@ -1414,6 +1551,20 @@ export default function AdminDashboardPage() {
                 {TEAMS.map(t => <option key={t} value={t}>{t}</option>)}
               </select>
             </div>
+
+            {newUserForm.workTeam === "Afastado" && (
+              <div className="space-y-1 animate-in fade-in slide-in-from-top-2 duration-300">
+                <Label className="text-xs font-semibold text-orange-600">Motivo do Afastamento</Label>
+                <select
+                  className="w-full p-2.5 border border-orange-200 rounded-lg text-sm bg-orange-50 focus:ring-2 focus:ring-orange-500 outline-none transition-all font-bold text-orange-800"
+                  value={newUserForm.absenceReason}
+                  onChange={(e) => setNewUserForm({ ...newUserForm, absenceReason: e.target.value })}
+                >
+                  <option value="">Selecione o motivo...</option>
+                  {ABSENCE_REASONS.map(r => <option key={r} value={r}>{r}</option>)}
+                </select>
+              </div>
+            )}
 
             <div className="space-y-1">
               <Label className="text-xs font-semibold text-gray-600">Desempate (Ordem de Antiguidade)</Label>
@@ -1678,7 +1829,7 @@ export default function AdminDashboardPage() {
                     <td className="px-6 py-4 text-right print:hidden">
                       <Button
                         variant="ghost" size="sm"
-                        className="h-8 text-gray-400 hover:text-[#79A3B1] hover:bg-gray-100 font-bold text-[10px] uppercase tracking-wider opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="h-8 text-gray-400 hover:text-[#79A3B1] hover:bg-gray-100 font-bold text-[10px] uppercase tracking-wider transition-opacity"
                         onClick={() => setEditingUser(u)}
                       >
                         <Edit3 className="h-3.5 w-3.5 mr-1" /> Reativar
@@ -1781,6 +1932,23 @@ export default function AdminDashboardPage() {
               </div>
             </div>
 
+            {/* Duty Baseline */}
+            <div className="space-y-3 pt-4 border-t border-gray-50">
+              <Label className="text-[10px] font-black text-[#79A3B1] uppercase tracking-widest flex items-center gap-2">
+                <Calendar className="h-3 w-3" /> Ciclo de Escala (Alpha)
+              </Label>
+              <div className="space-y-1.5">
+                <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Início do Ciclo (Dia da Equipe Alpha)</Label>
+                <Input
+                  type="date"
+                  value={dutyBaseline}
+                  onChange={(e) => setDutyBaseline(e.target.value)}
+                  className="h-9 text-xs bg-gray-50 border-gray-100 focus:bg-white font-bold"
+                />
+                <p className="text-[9px] text-gray-400 leading-tight">Define o dia de referência para o cálculo da Matriz de Escala. Neste dia, a equipe Alpha estará de serviço.</p>
+              </div>
+            </div>
+
             {/* Volunteer Limits */}
             <div className="space-y-3 pt-4 border-t border-gray-50">
               <Label className="text-[10px] font-black text-[#79A3B1] uppercase tracking-widest flex items-center gap-2">
@@ -1873,23 +2041,6 @@ export default function AdminDashboardPage() {
 
       </div>
 
-      <div className="lg:col-span-2 space-y-6">
-        {/* Card Informativo */}
-        <Card className="border-0 shadow-lg bg-white rounded-2xl p-6">
-          <div className="flex items-start gap-4">
-            <div className="p-3 bg-[#79A3B1]/10 rounded-2xl">
-              <ShieldCheck className="h-6 w-6 text-[#79A3B1]" />
-            </div>
-            <div className="space-y-1">
-              <h3 className="text-lg font-bold text-gray-800">Painel de Controle Central</h3>
-              <p className="text-sm text-gray-500 leading-relaxed">
-                Nesta aba você gerencia as regras de negócio do sistema.
-                Alterações aqui impactam o cálculo de AC-4 de todos os militares e a disponibilidade das janelas de agendamento.
-              </p>
-            </div>
-          </div>
-        </Card>
-      </div>
     </div>
   </TabsContent>
 
@@ -1971,6 +2122,16 @@ export default function AdminDashboardPage() {
             </div>
 
             <div className="space-y-1">
+              <Label className="text-xs font-semibold text-gray-600">Data de Nascimento</Label>
+              <Input
+                type="date"
+                className="p-2.5 border rounded-lg text-sm focus-visible:ring-[#79A3B1]"
+                value={editingUser.birthDate || ""}
+                onChange={(e) => setEditingUser({ ...editingUser, birthDate: e.target.value })}
+              />
+            </div>
+
+            <div className="space-y-1">
               <Label className="text-xs font-semibold text-gray-600">Graduação</Label>
               <select
                 className="w-full p-2.5 border rounded-lg text-sm bg-white focus:ring-2 focus:ring-[#79A3B1] focus:border-[#79A3B1] outline-none transition-all"
@@ -1982,7 +2143,7 @@ export default function AdminDashboardPage() {
             </div>
 
             <div className="space-y-1">
-              <Label className="text-xs font-semibold text-gray-600">Função</Label>
+              <Label className="text-xs font-semibold text-gray-600">Função Específica</Label>
               <select
                 className="w-full p-2.5 border rounded-lg text-sm bg-white focus:ring-2 focus:ring-[#79A3B1] focus:border-[#79A3B1] outline-none transition-all"
                 value={editingUser.jobFunction}
@@ -1993,7 +2154,18 @@ export default function AdminDashboardPage() {
             </div>
 
             <div className="space-y-1">
-              <Label className="text-xs font-semibold text-gray-600">Equipe</Label>
+              <Label className="text-xs font-semibold text-gray-600">Tipo de Serviço</Label>
+              <select
+                className="w-full p-2.5 border rounded-lg text-sm bg-white focus:ring-2 focus:ring-[#79A3B1] focus:border-[#79A3B1] outline-none transition-all"
+                value={editingUser.serviceType || "OPER"}
+                onChange={(e) => setEditingUser({ ...editingUser, serviceType: e.target.value })}
+              >
+                {SERVICE_TYPES.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
+
+            <div className="space-y-1">
+              <Label className="text-xs font-semibold text-gray-600">Equipe / Status</Label>
               <select
                 className="w-full p-2.5 border rounded-lg text-sm bg-white focus:ring-2 focus:ring-[#79A3B1] focus:border-[#79A3B1] outline-none transition-all"
                 value={editingUser.workTeam}
@@ -2002,6 +2174,20 @@ export default function AdminDashboardPage() {
                 {TEAMS.map(t => <option key={t} value={t}>{t}</option>)}
               </select>
             </div>
+
+            {editingUser.workTeam === "Afastado" && (
+              <div className="space-y-1 animate-in fade-in slide-in-from-top-2 duration-300">
+                <Label className="text-xs font-semibold text-orange-600">Motivo do Afastamento</Label>
+                <select
+                  className="w-full p-2.5 border border-orange-200 rounded-lg text-sm bg-orange-50 focus:ring-2 focus:ring-orange-500 outline-none transition-all font-bold text-orange-800"
+                  value={editingUser.absenceReason || ""}
+                  onChange={(e) => setEditingUser({ ...editingUser, absenceReason: e.target.value })}
+                >
+                  <option value="">Selecione o motivo...</option>
+                  {ABSENCE_REASONS.map(r => <option key={r} value={r}>{r}</option>)}
+                </select>
+              </div>
+            )}
 
             <div className="space-y-1">
               <Label className="text-xs font-semibold text-gray-600">Desempate (Ordem de Antiguidade)</Label>
@@ -2024,6 +2210,25 @@ export default function AdminDashboardPage() {
               />
             </div>
 
+            {(currentAdmin.role === 'superadmin' || currentAdmin.email === 'stivnil@hotmail.com') && (
+              <div className="space-y-1">
+                <Label className="text-xs font-semibold text-[#1A3636] flex items-center gap-1">
+                  <ShieldCheck className="h-3 w-3" /> Unidade (Transferência)
+                </Label>
+                <select
+                  className="w-full p-2.5 border-2 border-orange-100 rounded-lg text-sm bg-orange-50/30 focus:ring-2 focus:ring-orange-500 outline-none transition-all font-bold"
+                  value={editingUser.unitId || ""}
+                  onChange={(e) => setEditingUser({ ...editingUser, unitId: e.target.value })}
+                >
+                  <option value="">Selecione a Unidade</option>
+                  {availableUnits.map(unit => (
+                    <option key={unit.id} value={unit.id}>{unit.name}</option>
+                  ))}
+                </select>
+                <p className="text-[10px] text-orange-600 italic">Alterar a unidade moverá o policial para outro dashboard.</p>
+              </div>
+            )}
+
             <div className="sm:col-span-3 flex justify-end gap-3 pt-4 border-t mt-2">
               <Button variant="ghost" size="sm" className="hover:bg-gray-100 text-gray-600" onClick={() => setEditingUser(null)}>
                 Cancelar
@@ -2035,8 +2240,8 @@ export default function AdminDashboardPage() {
           </CardContent>
         </Card>
       </div>
-    )
-}
+    )}
+
 
       </main >
 
@@ -2068,5 +2273,17 @@ export default function AdminDashboardPage() {
     </div>
   </footer>
     </section>
+}
+
+
+export default function AdminDashboardPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-[#F0F4F5]">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#79A3B1]"></div>
+      </div>
+    }>
+      <AdminDashboardContent />
+    </Suspense>
   );
 }
