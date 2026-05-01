@@ -455,7 +455,8 @@ export default function AdminDashboardPage() {
     );
   }
 
-  return <section className="min-h-screen flex flex-col bg-[#F0F4F5]">
+  return (
+    <section className="min-h-screen flex flex-col bg-[#F0F4F5]">
       <header className="bg-[#79A3B1] border-b shadow-md sticky top-0 z-50 text-white print:hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between relative">
           <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2">
@@ -824,9 +825,112 @@ export default function AdminDashboardPage() {
               })()}
             </div>
 
-          </div>
-        </div>
 
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
+              <div className="lg:col-span-1 space-y-6">
+        {/* Criar Nova Escala SER */}
+        <Card className="border-0 shadow-lg bg-white rounded-2xl overflow-hidden">
+          <div className="bg-[#ACC18A]/10 p-4 border-b">
+            <CardTitle className="text-[#6d8050] flex items-center gap-2 text-base" style={{ fontFamily: 'Space Grotesk, sans-serif' }}>
+              <Plus className="h-5 w-5" />
+              Criar Nova Escala SER
+            </CardTitle>
+          </div>
+          <CardContent className="p-5">
+            <form onSubmit={handleCreateScheduleBatch} className="space-y-4">
+              <div className="space-y-1.5">
+                <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Identificação do Serviço</Label>
+                <Input
+                  required placeholder="Ex: Guarda do Quartel" value={newScheduleData.scheduleName}
+                  onChange={(e) => setNewScheduleData({ ...newScheduleData, scheduleName: e.target.value })}
+                  className="bg-gray-50 border-gray-100 focus:bg-white"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Início</Label>
+                  <Input
+                    type="time" required value={newScheduleData.startTime}
+                    onChange={(e) => setNewScheduleData({ ...newScheduleData, startTime: e.target.value })}
+                    className="bg-gray-50 border-gray-100 focus:bg-white"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Término</Label>
+                  <Input
+                    type="time" required value={newScheduleData.endTime}
+                    onChange={(e) => setNewScheduleData({ ...newScheduleData, endTime: e.target.value })}
+                    className="bg-gray-50 border-gray-100 focus:bg-white"
+                  />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Vagas por Dia</Label>
+                <Input
+                  type="number" min="1" required value={newScheduleData.capacity}
+                  onChange={(e) => setNewScheduleData({ ...newScheduleData, capacity: parseInt(e.target.value) || 1 })}
+                  className="bg-gray-50 border-gray-100 focus:bg-white"
+                />
+              </div>
+
+              <div className="pt-4 border-t">
+                <div className="flex items-center justify-between mb-3">
+                  <Label className="text-[11px] font-bold text-gray-600 flex items-center gap-1 uppercase tracking-tight">
+                    <CalendarDays className="h-4 w-4 text-[#ACC18A]" />
+                    Seleção de Dias ({new Date(creationYear, creationMonth).toLocaleString('pt-BR', { month: 'long' })})
+                  </Label>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      type="button" variant="ghost" size="icon" className="h-6 w-6"
+                      onClick={() => {
+                        if (creationMonth === 0) { setCreationMonth(11); setCreationYear(v => v - 1); }
+                        else setCreationMonth(v => v - 1);
+                        setSelectedDays([]);
+                      }}
+                    >
+                      <Search className="h-3 w-3 rotate-180" />
+                    </Button>
+                    <Button
+                      type="button" variant="ghost" size="icon" className="h-6 w-6"
+                      onClick={() => {
+                        if (creationMonth === 11) { setCreationMonth(0); setCreationYear(v => v + 1); }
+                        else setCreationMonth(v => v + 1);
+                        setSelectedDays([]);
+                      }}
+                    >
+                      <Search className="h-3 w-3" />
+                    </Button>
+                  </div>
+                </div>
+                <div className="grid grid-cols-7 gap-1.5 text-center">
+                  {Array.from({ length: getDaysInMonth(creationYear, creationMonth) }, (_, i) => i + 1).map(day => (
+                    <button
+                      type="button" key={day}
+                      onClick={() => toggleDay(day)}
+                      className={`h-8 w-full text-[10px] font-bold rounded-md border transition-all ${selectedDays.includes(day)
+                        ? 'bg-[#ACC18A] text-white border-[#ACC18A] shadow-md'
+                        : 'hover:bg-gray-100 bg-gray-50 text-gray-600 border-gray-100'
+                        }`}
+                    >
+                      {day}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex gap-2 mt-3">
+                  <Button type="button" variant="outline" size="sm" className="flex-1 text-[10px] h-7 font-bold uppercase tracking-wider" onClick={() => setSelectedDays(Array.from({ length: getDaysInMonth(creationYear, creationMonth) }, (_, i) => i + 1))}>Todos</Button>
+                  <Button type="button" variant="outline" size="sm" className="flex-1 text-[10px] h-7 font-bold uppercase tracking-wider" onClick={() => setSelectedDays([])}>Limpar</Button>
+                </div>
+              </div>
+
+              <Button type="submit" className="w-full bg-[#ACC18A] text-gray-900 hover:bg-[#8da36d] shadow-lg shadow-[#ACC18A]/20 font-bold uppercase tracking-widest text-xs h-11">
+                <Check className="h-4 w-4 mr-2" /> Criar Escalas
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+              </div>
+              <div className="lg:col-span-2 space-y-6">
         <Card className="border-0 shadow-xl bg-white rounded-2xl lg:col-span-2 overflow-hidden">
           <CardHeader className="flex flex-row items-center justify-between p-6 border-b bg-gray-50/30">
             <div className="space-y-1">
@@ -957,7 +1061,9 @@ export default function AdminDashboardPage() {
             )}
           </CardContent>
         </Card>
-      </div>
+              </div>
+            </div>
+
 
       {editingSchedule && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in duration-200">
@@ -1765,106 +1871,6 @@ export default function AdminDashboardPage() {
           </CardContent>
         </Card>
 
-        {/* Criar Nova Escala SER */}
-        <Card className="border-0 shadow-lg bg-white rounded-2xl overflow-hidden">
-          <div className="bg-[#ACC18A]/10 p-4 border-b">
-            <CardTitle className="text-[#6d8050] flex items-center gap-2 text-base" style={{ fontFamily: 'Space Grotesk, sans-serif' }}>
-              <Plus className="h-5 w-5" />
-              Criar Nova Escala SER
-            </CardTitle>
-          </div>
-          <CardContent className="p-5">
-            <form onSubmit={handleCreateScheduleBatch} className="space-y-4">
-              <div className="space-y-1.5">
-                <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Identificação do Serviço</Label>
-                <Input
-                  required placeholder="Ex: Guarda do Quartel" value={newScheduleData.scheduleName}
-                  onChange={(e) => setNewScheduleData({ ...newScheduleData, scheduleName: e.target.value })}
-                  className="bg-gray-50 border-gray-100 focus:bg-white"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Início</Label>
-                  <Input
-                    type="time" required value={newScheduleData.startTime}
-                    onChange={(e) => setNewScheduleData({ ...newScheduleData, startTime: e.target.value })}
-                    className="bg-gray-50 border-gray-100 focus:bg-white"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Término</Label>
-                  <Input
-                    type="time" required value={newScheduleData.endTime}
-                    onChange={(e) => setNewScheduleData({ ...newScheduleData, endTime: e.target.value })}
-                    className="bg-gray-50 border-gray-100 focus:bg-white"
-                  />
-                </div>
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Vagas por Dia</Label>
-                <Input
-                  type="number" min="1" required value={newScheduleData.capacity}
-                  onChange={(e) => setNewScheduleData({ ...newScheduleData, capacity: parseInt(e.target.value) || 1 })}
-                  className="bg-gray-50 border-gray-100 focus:bg-white"
-                />
-              </div>
-
-              <div className="pt-4 border-t">
-                <div className="flex items-center justify-between mb-3">
-                  <Label className="text-[11px] font-bold text-gray-600 flex items-center gap-1 uppercase tracking-tight">
-                    <CalendarDays className="h-4 w-4 text-[#ACC18A]" />
-                    Seleção de Dias ({new Date(creationYear, creationMonth).toLocaleString('pt-BR', { month: 'long' })})
-                  </Label>
-                  <div className="flex items-center gap-1">
-                    <Button
-                      type="button" variant="ghost" size="icon" className="h-6 w-6"
-                      onClick={() => {
-                        if (creationMonth === 0) { setCreationMonth(11); setCreationYear(v => v - 1); }
-                        else setCreationMonth(v => v - 1);
-                        setSelectedDays([]);
-                      }}
-                    >
-                      <Search className="h-3 w-3 rotate-180" />
-                    </Button>
-                    <Button
-                      type="button" variant="ghost" size="icon" className="h-6 w-6"
-                      onClick={() => {
-                        if (creationMonth === 11) { setCreationMonth(0); setCreationYear(v => v + 1); }
-                        else setCreationMonth(v => v + 1);
-                        setSelectedDays([]);
-                      }}
-                    >
-                      <Search className="h-3 w-3" />
-                    </Button>
-                  </div>
-                </div>
-                <div className="grid grid-cols-7 gap-1.5 text-center">
-                  {Array.from({ length: getDaysInMonth(creationYear, creationMonth) }, (_, i) => i + 1).map(day => (
-                    <button
-                      type="button" key={day}
-                      onClick={() => toggleDay(day)}
-                      className={`h-8 w-full text-[10px] font-bold rounded-md border transition-all ${selectedDays.includes(day)
-                        ? 'bg-[#ACC18A] text-white border-[#ACC18A] shadow-md'
-                        : 'hover:bg-gray-100 bg-gray-50 text-gray-600 border-gray-100'
-                        }`}
-                    >
-                      {day}
-                    </button>
-                  ))}
-                </div>
-                <div className="flex gap-2 mt-3">
-                  <Button type="button" variant="outline" size="sm" className="flex-1 text-[10px] h-7 font-bold uppercase tracking-wider" onClick={() => setSelectedDays(Array.from({ length: getDaysInMonth(creationYear, creationMonth) }, (_, i) => i + 1))}>Todos</Button>
-                  <Button type="button" variant="outline" size="sm" className="flex-1 text-[10px] h-7 font-bold uppercase tracking-wider" onClick={() => setSelectedDays([])}>Limpar</Button>
-                </div>
-              </div>
-
-              <Button type="submit" className="w-full bg-[#ACC18A] text-gray-900 hover:bg-[#8da36d] shadow-lg shadow-[#ACC18A]/20 font-bold uppercase tracking-widest text-xs h-11">
-                <Check className="h-4 w-4 mr-2" /> Criar Escalas
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
       </div>
 
       <div className="lg:col-span-2 space-y-6">
@@ -2061,5 +2067,6 @@ export default function AdminDashboardPage() {
       </div>
     </div>
   </footer>
-    </section>;
+    </section>
+  );
 }

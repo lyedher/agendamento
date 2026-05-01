@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,7 +14,7 @@ import { maskRG, maskCPF, maskPhone } from "@/lib/utils/masks";
 const RANKS = ["Soldado", "Cabo", "3º Sargento", "2º Sargento", "1º Sargento", "Subtenente", "Aspirante", "2º Tenente", "1º Tenente", "Capitão", "Major", "Tenente-Coronel", "Coronel"];
 const TEAMS = ["Alfa", "Bravo", "Charlie", "Delta", "ADM"];
 
-export default function RegisterPage() {
+function RegisterForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const inviteCode = searchParams.get("code");
@@ -333,5 +333,13 @@ export default function RegisterPage() {
         </Card>
       </div>
     </main>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-[#F0F4F5]"><div className="w-8 h-8 border-4 border-[#79A3B1] border-t-transparent rounded-full animate-spin" /></div>}>
+      <RegisterForm />
+    </Suspense>
   );
 }
