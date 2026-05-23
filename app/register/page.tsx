@@ -8,7 +8,7 @@ import { ShieldAlert, ArrowLeft, Building2, UserPlus2, CheckCircle2, ShieldCheck
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { publicRegisterUser, validateInviteCode } from "@/lib/actions";
+import { publicRegisterUser, validateInviteCode, getUnits } from "@/lib/actions";
 import { maskRG, maskCPF, maskPhone } from "@/lib/utils/masks";
 
 const RANKS = ["Soldado", "Cabo", "3º Sargento", "2º Sargento", "1º Sargento", "Subtenente", "Aspirante", "2º Tenente", "1º Tenente", "Capitão", "Major", "Tenente-Coronel", "Coronel"];
@@ -19,7 +19,7 @@ function RegisterForm() {
   const searchParams = useSearchParams();
   const inviteCode = searchParams.get("code");
   
-  const [isValidCode, setIsValidCode] = useState<boolean | null>(null);
+  const [unitsList, setUnitsList] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [unitName, setUnitName] = useState("");
@@ -36,32 +36,55 @@ function RegisterForm() {
     email: "",
     password: "",
     confirmPassword: "",
-    jobFunction: "Plantonista"
+    jobFunction: "Plantonista",
+    unitId: ""
   });
 
   useEffect(() => {
-    async function checkCode() {
-      if (!inviteCode) {
-        setIsValidCode(false);
-        setIsLoading(false);
-        return;
-      }
+    async function loadPageData() {
       try {
-        const result = await validateInviteCode(inviteCode);
-        setIsValidCode(result.valid);
-        setUnitName(result.unitName || "");
+        // 1. Carregar lista de batalhões/unidades
+        const unitsRes = await getUnits();
+        if (unitsRes.success) {
+          setUnitsList(unitsRes.units);
+        }
+
+        // 2. Validar convite se existir na URL
+        if (inviteCode) {
+          const result = await validateInviteCode(inviteCode);
+          if (result.valid) {
+            setUnitName(result.unitName || "");
+            
+            // Tenta pré-selecionar o batalhão correspondente
+            const matchedUnit = unitsRes.success 
+              ? unitsRes.units.find((u: any) => u.name === result.unitName) 
+              : null;
+            
+            setFormData(prev => ({ 
+              ...prev, 
+              unitId: matchedUnit?.id || prev.unitId 
+            }));
+          } else {
+            setError("O link de convite é inválido ou expirou. Por favor, selecione abaixo o seu Batalhão para se cadastrar normalmente!");
+          }
+        }
       } catch (err) {
-        setIsValidCode(false);
+        console.error("Erro ao iniciar formulário:", err);
       } finally {
         setIsLoading(false);
       }
     }
-    checkCode();
+    loadPageData();
   }, [inviteCode]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+
+    if (!formData.unitId) {
+      setError("Por favor, selecione a qual Batalhão / UPM você pertence.");
+      return;
+    }
     
     if (formData.password !== formData.confirmPassword) {
       setError("As senhas não conferem.");
@@ -75,7 +98,7 @@ function RegisterForm() {
 
     setIsSubmitting(true);
     try {
-      const result = await publicRegisterUser(formData, inviteCode || "");
+      const result = await publicRegisterUser(formData, inviteCode || undefined);
 
       if (result.success) {
         router.push("/login?registered=true");
@@ -94,33 +117,8 @@ function RegisterForm() {
       <div className="min-h-screen flex items-center justify-center bg-[#F0F4F5]">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="h-10 w-10 text-[#79A3B1] animate-spin" />
-          <p className="text-gray-500 font-bold animate-pulse">Validando convite...</p>
+          <p className="text-gray-500 font-bold animate-pulse">Carregando formulário...</p>
         </div>
-      </div>
-    );
-  }
-
-  if (isValidCode === false) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[#F0F4F5] p-4">
-        <Card className="max-w-md w-full border-0 shadow-2xl rounded-3xl animate-in fade-in zoom-in duration-500">
-          <CardHeader className="text-center space-y-4">
-            <div className="mx-auto w-16 h-16 bg-red-50 rounded-2xl flex items-center justify-center">
-              <ShieldAlert className="h-10 w-10 text-red-500" />
-            </div>
-            <CardTitle className="text-2xl font-black text-gray-800">Convite Inválido</CardTitle>
-            <CardDescription className="text-gray-500 font-medium">
-              O link utilizado é inválido ou expirou. Solicite um novo link ao administrador da sua unidade.
-            </CardDescription>
-          </CardHeader>
-          <CardFooter>
-            <Link href="/login" className="w-full">
-              <Button variant="outline" className="w-full h-12 rounded-xl border-2 hover:bg-gray-50 font-bold">
-                <ArrowLeft className="mr-2 h-4 w-4" /> Voltar para o Login
-              </Button>
-            </Link>
-          </CardFooter>
-        </Card>
       </div>
     );
   }
@@ -138,7 +136,7 @@ function RegisterForm() {
               <div className="space-y-1">
                 <div className="flex items-center justify-center md:justify-start gap-2 text-[#79A3B1] font-black uppercase tracking-tighter text-sm mb-2">
                   <Building2 className="h-4 w-4" />
-                  {unitName || "Unidade Militar"}
+                  {unitName || (formData.unitId ? (unitsList.find(u => u.id === formData.unitId)?.name) : "Cadastro Aberto")}
                 </div>
                 <CardTitle className="text-3xl font-black text-gray-900 tracking-tight flex items-center justify-center md:justify-start gap-3">
                   <UserPlus2 className="h-8 w-8 text-[#79A3B1]" />
@@ -209,6 +207,21 @@ function RegisterForm() {
                     onChange={(e) => setFormData({...formData, workTeam: e.target.value})}
                   >
                     {TEAMS.map(t => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                </div>
+
+                <div className="space-y-2 md:col-span-2">
+                  <Label className="text-xs font-bold text-gray-400 uppercase ml-1">Batalhão / Unidade Militar (UPM)</Label>
+                  <select 
+                    required
+                    className="w-full h-11 px-4 bg-gray-50 border border-gray-100 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#79A3B1]/20 focus:border-[#79A3B1] transition-all shadow-sm"
+                    value={formData.unitId}
+                    onChange={(e) => setFormData({...formData, unitId: e.target.value})}
+                  >
+                    <option value="">Selecione seu Batalhão...</option>
+                    {unitsList.map(u => (
+                      <option key={u.id} value={u.id}>{u.name}</option>
+                    ))}
                   </select>
                 </div>
 

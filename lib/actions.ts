@@ -20,22 +20,24 @@ export async function validateInviteCode(inviteCode: string) {
   }
 }
 
-export async function publicRegisterUser(formData: any, inviteCode: string) {
+export async function publicRegisterUser(formData: any, inviteCode?: string) {
   try {
-    // Buscar todas as unidades para validar o convite
-    const units = await db.units.getAll();
-    let targetUnitId = "";
+    let targetUnitId = formData.unitId;
     
-    for (const unit of units) {
-      const unitSettings = await db.settings.get(unit.id);
-      if (unitSettings.inviteCode && unitSettings.inviteCode === inviteCode) {
-        targetUnitId = unit.id;
-        break;
+    if (!targetUnitId && inviteCode) {
+      // Buscar todas as unidades para validar o convite
+      const units = await db.units.getAll();
+      for (const unit of units) {
+        const unitSettings = await db.settings.get(unit.id);
+        if (unitSettings.inviteCode && unitSettings.inviteCode === inviteCode) {
+          targetUnitId = unit.id;
+          break;
+        }
       }
     }
 
     if (!targetUnitId) {
-      throw new Error("Link de convite inválido ou expirado.");
+      throw new Error("Por favor, selecione a qual Batalhão/Unidade você pertence.");
     }
 
     const userEmail = formData.email || `${formData.taxId}@escala.militar`;
@@ -58,6 +60,7 @@ export async function publicRegisterUser(formData: any, inviteCode: string) {
     return { success: false, message: error.message || "Erro no cadastro." };
   }
 }
+
 
 export async function registerUser(formData: Omit<User, 'id'>) {
   return { 
