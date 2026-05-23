@@ -2,6 +2,12 @@
 import fs from 'fs';
 import path from 'path';
 
+import initialUsers from './users.json';
+import initialSchedules from './schedules.json';
+import initialUnits from './units.json';
+import initialSettings from './settings.json';
+import initialAuditLogs from './audit_logs.json';
+
 export interface User {
   id: string;
   email: string;
@@ -72,11 +78,14 @@ export interface AuditLog {
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_KEY;
 
-const DB_FILE = path.join(process.cwd(), 'lib', 'db', 'users.json');
-const SCHEDULES_FILE = path.join(process.cwd(), 'lib', 'db', 'schedules.json');
-const SETTINGS_FILE = path.join(process.cwd(), 'lib', 'db', 'settings.json');
-const UNITS_FILE = path.join(process.cwd(), 'lib', 'db', 'units.json');
-const AUDIT_LOGS_FILE = path.join(process.cwd(), 'lib', 'db', 'audit_logs.json');
+const isVercel = process.env.VERCEL === '1' || process.env.NOW_BUILDER === '1';
+const BASE_DIR = isVercel ? '/tmp' : path.join(process.cwd(), 'lib', 'db');
+
+const DB_FILE = path.join(BASE_DIR, 'users.json');
+const SCHEDULES_FILE = path.join(BASE_DIR, 'schedules.json');
+const SETTINGS_FILE = path.join(BASE_DIR, 'settings.json');
+const UNITS_FILE = path.join(BASE_DIR, 'units.json');
+const AUDIT_LOGS_FILE = path.join(BASE_DIR, 'audit_logs.json');
 
 const headers = {
   'apikey': SUPABASE_KEY,
@@ -87,68 +96,130 @@ const headers = {
 
 function getLocalUsers(): User[] {
   if (!fs.existsSync(DB_FILE)) {
-    fs.writeFileSync(DB_FILE, JSON.stringify([]));
-    return [];
+    try {
+      fs.writeFileSync(DB_FILE, JSON.stringify(initialUsers, null, 2));
+    } catch (e) {
+      console.warn("Failed to initialize users file in fallback path:", e);
+      return initialUsers as User[];
+    }
   }
-  const data = fs.readFileSync(DB_FILE, 'utf8');
-  return JSON.parse(data || '[]');
+  try {
+    const data = fs.readFileSync(DB_FILE, 'utf8');
+    return JSON.parse(data || '[]');
+  } catch {
+    return initialUsers as User[];
+  }
 }
 
 function saveLocalUsers(users: User[]) {
-  fs.writeFileSync(DB_FILE, JSON.stringify(users, null, 2));
+  try {
+    fs.writeFileSync(DB_FILE, JSON.stringify(users, null, 2));
+  } catch (e) {
+    console.warn("Failed to save users:", e);
+  }
 }
 
 function getLocalSchedules(): Schedule[] {
   if (!fs.existsSync(SCHEDULES_FILE)) {
-    fs.writeFileSync(SCHEDULES_FILE, JSON.stringify([]));
-    return [];
+    try {
+      fs.writeFileSync(SCHEDULES_FILE, JSON.stringify(initialSchedules, null, 2));
+    } catch (e) {
+      console.warn("Failed to initialize schedules file in fallback path:", e);
+      return initialSchedules as Schedule[];
+    }
   }
-  const data = fs.readFileSync(SCHEDULES_FILE, 'utf8');
-  return JSON.parse(data || '[]');
+  try {
+    const data = fs.readFileSync(SCHEDULES_FILE, 'utf8');
+    return JSON.parse(data || '[]');
+  } catch {
+    return initialSchedules as Schedule[];
+  }
 }
 
 function saveLocalSchedules(schedules: Schedule[]) {
-  fs.writeFileSync(SCHEDULES_FILE, JSON.stringify(schedules, null, 2));
+  try {
+    fs.writeFileSync(SCHEDULES_FILE, JSON.stringify(schedules, null, 2));
+  } catch (e) {
+    console.warn("Failed to save schedules:", e);
+  }
 }
 
 function getLocalSettings(): AppSettings[] {
   if (!fs.existsSync(SETTINGS_FILE)) {
-    fs.writeFileSync(SETTINGS_FILE, JSON.stringify([], null, 2));
-    return [];
+    try {
+      fs.writeFileSync(SETTINGS_FILE, JSON.stringify(initialSettings, null, 2));
+    } catch (e) {
+      console.warn("Failed to initialize settings file in fallback path:", e);
+      const parsed = initialSettings;
+      return Array.isArray(parsed) ? (parsed as AppSettings[]) : ([parsed] as AppSettings[]);
+    }
   }
-  const data = fs.readFileSync(SETTINGS_FILE, 'utf8');
   try {
+    const data = fs.readFileSync(SETTINGS_FILE, 'utf8');
     const parsed = JSON.parse(data);
     return Array.isArray(parsed) ? parsed : [parsed];
   } catch {
-    return [];
+    const parsed = initialSettings;
+    return Array.isArray(parsed) ? (parsed as AppSettings[]) : ([parsed] as AppSettings[]);
   }
 }
 
 function saveLocalSettings(settings: AppSettings[]) {
-  fs.writeFileSync(SETTINGS_FILE, JSON.stringify(settings, null, 2));
+  try {
+    fs.writeFileSync(SETTINGS_FILE, JSON.stringify(settings, null, 2));
+  } catch (e) {
+    console.warn("Failed to save settings:", e);
+  }
 }
 
 function getLocalUnits(): Unit[] {
   if (!fs.existsSync(UNITS_FILE)) {
-    fs.writeFileSync(UNITS_FILE, JSON.stringify([{ id: '39bpm', name: '39º BPM', budgetLimit: 50000, currentSpend: 0, status: 'active' }], null, 2));
-    return [{ id: '39bpm', name: '39º BPM', budgetLimit: 50000, currentSpend: 0, status: 'active' }];
+    try {
+      fs.writeFileSync(UNITS_FILE, JSON.stringify(initialUnits, null, 2));
+    } catch (e) {
+      console.warn("Failed to initialize units file in fallback path:", e);
+      return initialUnits as Unit[];
+    }
   }
-  const data = fs.readFileSync(UNITS_FILE, 'utf8');
-  return JSON.parse(data || '[]');
+  try {
+    const data = fs.readFileSync(UNITS_FILE, 'utf8');
+    return JSON.parse(data || '[]');
+  } catch {
+    return initialUnits as Unit[];
+  }
 }
 
 function saveLocalUnits(units: Unit[]) {
-  fs.writeFileSync(UNITS_FILE, JSON.stringify(units, null, 2));
+  try {
+    fs.writeFileSync(UNITS_FILE, JSON.stringify(units, null, 2));
+  } catch (e) {
+    console.warn("Failed to save units:", e);
+  }
 }
 
 function getLocalAuditLogs(): AuditLog[] {
   if (!fs.existsSync(AUDIT_LOGS_FILE)) {
-    fs.writeFileSync(AUDIT_LOGS_FILE, JSON.stringify([]));
-    return [];
+    try {
+      fs.writeFileSync(AUDIT_LOGS_FILE, JSON.stringify(initialAuditLogs, null, 2));
+    } catch (e) {
+      console.warn("Failed to initialize audit logs file in fallback path:", e);
+      return initialAuditLogs as AuditLog[];
+    }
   }
-  const data = fs.readFileSync(AUDIT_LOGS_FILE, 'utf8');
-  return JSON.parse(data || '[]');
+  try {
+    const data = fs.readFileSync(AUDIT_LOGS_FILE, 'utf8');
+    return JSON.parse(data || '[]');
+  } catch {
+    return initialAuditLogs as AuditLog[];
+  }
+}
+
+function saveLocalAuditLogs(logs: AuditLog[]) {
+  try {
+    fs.writeFileSync(AUDIT_LOGS_FILE, JSON.stringify(logs, null, 2));
+  } catch (e) {
+    console.warn("Failed to save audit logs:", e);
+  }
 }
 
 function mapUserToDb(user: Partial<User>) {
