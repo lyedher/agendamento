@@ -36,5 +36,534 @@
     "id": "iu704q",
     "userIds": [],
     "unitId": "39bpm"
+  },
+  {
+    "scheduleName": "AC-4",
+    "startTime": "2026-05-01T10:00:00.000Z",
+    "endTime": "2026-05-02T10:00:00.000Z",
+    "capacity": 2,
+    "unitId": "39bpm",
+    "id": "l42pv",
+    "userIds": [
+      "ext123",
+      "5u0bhd"
+    ]
+  },
+  {
+    "scheduleName": "Diurna",
+    "startTime": "2026-05-02T10:00:00.000Z",
+    "endTime": "2026-05-02T22:00:00.000Z",
+    "capacity": 1,
+    "unitId": "39bpm",
+    "id": "w7dstc",
+    "userIds": [
+      "bjhjvi"
+    ]
+  },
+  {
+    "scheduleName": "Noturna",
+    "startTime": "2026-05-02T22:00:00.000Z",
+    "endTime": "2026-05-03T10:00:00.000Z",
+    "capacity": 1,
+    "unitId": "39bpm",
+    "id": "knhps",
+    "userIds": [
+      "aeaf4a"
+    ]
+  },
+  {
+    "scheduleName": "Noturna",
+    "startTime": "2026-05-03T22:00:00.000Z",
+    "endTime": "2026-05-04T10:00:00.000Z",
+    "capacity": 1,
+    "unitId": "39bpm",
+    "id": "u8ro5l",
+    "userIds": [
+      "6z9jv6"
+    ]
+  },
+  {
+    "scheduleName": "Noturna",
+    "startTime": "2026-05-03T21:00:00.000Z",
+    "endTime": "2026-05-04T09:00:00.000Z",
+    "capacity": 2,
+    "unitId": "39bpm",
+    "id": "g1qh91",
+    "userIds": [
+      "r8b1jv",
+      "adm39bpm"
+    ]
+  },
+  {
+    "scheduleName": "Verspertina",
+    "startTime": "2026-05-04T16:00:00.000Z",
+    "endTime": "2026-05-05T04:00:00.000Z",
+    "capacity": 2,
+    "unitId": "39bpm",
+    "id": "2khpbr",
+    "userIds": [
+      "3140r9",
+      "6z9jv6"
+    ]
+  },
+  {
+    "scheduleName": "Noturna",
+    "startTime": "2026-05-04T22:00:00.000Z",
+    "endTime": "2026-05-05T10:00:00.000Z",
+    "capacity": 1,
+    "unitId": "39bpm",
+    "id": "t38u55",
+    "userIds": [
+      "idishl"
+    ]
+  },
+  {
+    "scheduleName": "24 horas",
+    "startTime": "2026-05-08T10:00:00.000Z",
+    "endTime": "2026-05-09T10:00:00.000Z",
+    "capacity": 1,
+    "unitId": "39bpm",
+    "id": "7mmzi",
+    "userIds": [
+      "ext123"
+    ]
+  },
+  {
+    "scheduleName": "Das 13h00min às 01h00min",
+    "startTime": "2026-05-08T16:00:00.000Z",
+    "endTime": "2026-05-09T04:00:00.000Z",
+    "capacity": 2,
+    "unitId": "39bpm",
+    "id": "w0zr7l",
+    "userIds": [
+      "r2h2ea",
+      "d0t3lg"
+    ]
+  },
+  {
+    "scheduleName": "Das 18h00min às 06h00min",
+    "startTime": "2026-05-08T21:00:00.000Z",
+    "endTime": "2026-05-09T09:00:00.000Z",
+    "capacity": 2,
+    "unitId": "39bpm",
+    "id": "0ytp2h",
+    "userIds": [
+      "aeaf4a",
+      "bjhjvi"
+    ]
+  },
+  {
+    "scheduleName": "Das 13h00min às 01h00min",
+    "startTime": "2026-05-09T16:00:00.000Z",
+    "endTime": "2026-05-10T04:00:00.000Z",
+    "capacity": 2,
+    "unitId": "39bpm",
+    "id": "a482x",
+    "userIds": [
+      "r8b1jv",
+      "slqfmn"
+    ]
+  },
+  {
+    "scheduleName": "Das 18h00min às 06h00min",
+    "startTime": "2026-05-09T21:00:00.000Z",
+    "endTime": "2026-05-10T09:00:00.000Z",
+    "capacity": 2,
+    "unitId": "39bpm",
+    "id": "ttwq59",
+    "userIds": [
+      "ext1",
+      "ext2"
+    ]
+  },
+  {
+    "scheduleName": "Das 18h00min às 06h00min",
+    "startTime": "2026-05-10T21:00:00.000Z",
+    "endTime": "2026-05-11T09:00:00.000Z",
+    "capacity": 2,
+    "unitId": "39bpm",
+    "id": "je612p",
+    "userIds": [
+      "ext1",
+      "adm39bpm"
+    ]
+  },
+  {
+    "scheduleName": "Das 07h00min às 07h00min",
+    "startTime": "2026-05-12T10:00:00.000Z",
+    "endTime": "2026-05-13T10:00:00.000Z",
+    "capacity": 1,
+    "unitId": "39bpm",
+    "id": "9klyl3",
+    "userIds": [
+      "ext1"
+    ]
+  },
+  {
+    "scheduleName": "Das 13h00min às 01h00min",
+    "startTime": "2026-05-12T16:00:00.000Z",
+    "endTime": "2026-05-13T04:00:00.000Z",
+    "capacity": 2,
+    "unitId": "39bpm",
+    "id": "r8mylu",
+    "userIds": [
+      "3140r9",
+      "h7kavv"
+    ]
+  },
+  {
+    "scheduleName": "Das 07h00min às 07h00min",
+    "startTime": "2026-05-13T10:00:00.000Z",
+    "endTime": "2026-05-14T10:00:00.000Z",
+    "capacity": 2,
+    "unitId": "39bpm",
+    "id": "afbq4y",
+    "userIds": [
+      "ext1"
+    ]
+  },
+  {
+    "scheduleName": "Das 07h00min às 07h00min",
+    "startTime": "2026-05-14T10:00:00.000Z",
+    "endTime": "2026-05-15T10:00:00.000Z",
+    "capacity": 2,
+    "unitId": "39bpm",
+    "id": "c84455",
+    "userIds": [
+      "9lsvti",
+      "ext1"
+    ]
+  },
+  {
+    "scheduleName": "Das 07h00min às 07h00min",
+    "startTime": "2026-05-15T10:00:00.000Z",
+    "endTime": "2026-05-16T10:00:00.000Z",
+    "capacity": 2,
+    "unitId": "39bpm",
+    "id": "4qq8m",
+    "userIds": [
+      "71xthq",
+      "mmsitd"
+    ]
+  },
+  {
+    "scheduleName": "Das 18h00min às 06h00min",
+    "startTime": "2026-05-15T21:00:00.000Z",
+    "endTime": "2026-05-16T09:00:00.000Z",
+    "capacity": 2,
+    "unitId": "39bpm",
+    "id": "af6s85",
+    "userIds": [
+      "3140r9",
+      "h7kavv"
+    ]
+  },
+  {
+    "scheduleName": "Das 18h00min às 06h00min",
+    "startTime": "2026-05-16T21:00:00.000Z",
+    "endTime": "2026-05-17T09:00:00.000Z",
+    "capacity": 2,
+    "unitId": "39bpm",
+    "id": "lof51q",
+    "userIds": [
+      "71xthq",
+      "bjhjvi"
+    ]
+  },
+  {
+    "scheduleName": "Das 07h00min às 07h00min",
+    "startTime": "2026-05-16T10:00:00.000Z",
+    "endTime": "2026-05-17T10:00:00.000Z",
+    "capacity": 1,
+    "unitId": "39bpm",
+    "id": "o8qwr",
+    "userIds": [
+      "h7kavv"
+    ]
+  },
+  {
+    "scheduleName": "Das 07h00min às 07h00min",
+    "startTime": "2026-05-17T10:00:00.000Z",
+    "endTime": "2026-05-18T10:00:00.000Z",
+    "capacity": 2,
+    "unitId": "39bpm",
+    "id": "p1czm9",
+    "userIds": [
+      "9lsvti",
+      "ext1"
+    ]
+  },
+  {
+    "scheduleName": "Das 18h00min às 06h00min",
+    "startTime": "2026-05-17T21:00:00.000Z",
+    "endTime": "2026-05-18T09:00:00.000Z",
+    "capacity": 2,
+    "unitId": "39bpm",
+    "id": "2b56el",
+    "userIds": [
+      "ext1",
+      "adm39bpm"
+    ]
+  },
+  {
+    "scheduleName": "Das 07h00min às 07h00min",
+    "startTime": "2026-05-18T10:00:00.000Z",
+    "endTime": "2026-05-19T10:00:00.000Z",
+    "capacity": 2,
+    "unitId": "39bpm",
+    "id": "4hbitk",
+    "userIds": [
+      "aeaf4a",
+      "ext1"
+    ]
+  },
+  {
+    "scheduleName": "Das 07h00min às 07h00min",
+    "startTime": "2026-05-19T10:00:00.000Z",
+    "endTime": "2026-05-20T10:00:00.000Z",
+    "capacity": 2,
+    "unitId": "39bpm",
+    "id": "vzwwul",
+    "userIds": [
+      "ext1",
+      "71xthq"
+    ]
+  },
+  {
+    "scheduleName": "Das 07h00min às 07h00min",
+    "startTime": "2026-05-20T10:00:00.000Z",
+    "endTime": "2026-05-21T10:00:00.000Z",
+    "capacity": 1,
+    "unitId": "39bpm",
+    "id": "eze3l",
+    "userIds": [
+      "jfwvkj"
+    ]
+  },
+  {
+    "scheduleName": "Das 07h00min às 07h00min",
+    "startTime": "2026-05-21T10:00:00.000Z",
+    "endTime": "2026-05-22T10:00:00.000Z",
+    "capacity": 2,
+    "unitId": "39bpm",
+    "id": "jbgdbx",
+    "userIds": [
+      "ext1",
+      "9lsvti"
+    ]
+  },
+  {
+    "scheduleName": "Das 13h00min às 01h00min",
+    "startTime": "2026-05-20T16:00:00.000Z",
+    "endTime": "2026-05-21T04:00:00.000Z",
+    "capacity": 2,
+    "unitId": "39bpm",
+    "id": "cd75so",
+    "userIds": [
+      "3140r9",
+      "h7kavv"
+    ]
+  },
+  {
+    "scheduleName": "Das 13h00min às 01h00min",
+    "startTime": "2026-05-22T16:00:00.000Z",
+    "endTime": "2026-05-23T04:00:00.000Z",
+    "capacity": 2,
+    "unitId": "39bpm",
+    "id": "ctnihv",
+    "userIds": [
+      "r2h2ea",
+      "d0t3lg"
+    ]
+  },
+  {
+    "scheduleName": "Das 18h00min às 06h00min",
+    "startTime": "2026-05-22T21:00:00.000Z",
+    "endTime": "2026-05-23T09:00:00.000Z",
+    "capacity": 2,
+    "unitId": "39bpm",
+    "id": "1zrdp",
+    "userIds": [
+      "aeaf4a",
+      "ext2"
+    ]
+  },
+  {
+    "scheduleName": "Das 07h00min às 07h00min",
+    "startTime": "2026-05-23T10:00:00.000Z",
+    "endTime": "2026-05-24T10:00:00.000Z",
+    "capacity": 1,
+    "unitId": "39bpm",
+    "id": "982u3v",
+    "userIds": [
+      "mmsitd"
+    ]
+  },
+  {
+    "scheduleName": "Das 13h00min às 01h00min",
+    "startTime": "2026-05-23T16:00:00.000Z",
+    "endTime": "2026-05-24T04:00:00.000Z",
+    "capacity": 2,
+    "unitId": "39bpm",
+    "id": "wqvbpg",
+    "userIds": [
+      "r8b1jv",
+      "71xthq"
+    ]
+  },
+  {
+    "scheduleName": "Das 18h00min às 06h00min",
+    "startTime": "2026-05-23T21:00:00.000Z",
+    "endTime": "2026-05-24T09:00:00.000Z",
+    "capacity": 2,
+    "unitId": "39bpm",
+    "id": "t3e3j",
+    "userIds": [
+      "ext2",
+      "ext3"
+    ]
+  },
+  {
+    "scheduleName": "Das 07h00min às 07h00min",
+    "startTime": "2026-05-24T10:00:00.000Z",
+    "endTime": "2026-05-25T10:00:00.000Z",
+    "capacity": 1,
+    "unitId": "39bpm",
+    "id": "332fb",
+    "userIds": [
+      "9lsvti"
+    ]
+  },
+  {
+    "scheduleName": "Das 18h00min às 06h00min",
+    "startTime": "2026-05-24T21:00:00.000Z",
+    "endTime": "2026-05-25T09:00:00.000Z",
+    "capacity": 4,
+    "unitId": "39bpm",
+    "id": "mfx9jj",
+    "userIds": [
+      "aeaf4a",
+      "bjhjvi",
+      "71xthq",
+      "adm39bpm"
+    ]
+  },
+  {
+    "scheduleName": "Das 07h00min às 07h00min",
+    "startTime": "2026-05-25T10:00:00.000Z",
+    "endTime": "2026-05-26T10:00:00.000Z",
+    "capacity": 2,
+    "unitId": "39bpm",
+    "id": "h1bv2",
+    "userIds": [
+      "ext2",
+      "aeaf4a"
+    ]
+  },
+  {
+    "scheduleName": "Das 07h00min às 07h00min",
+    "startTime": "2026-05-27T10:00:00.000Z",
+    "endTime": "2026-05-28T10:00:00.000Z",
+    "capacity": 1,
+    "unitId": "39bpm",
+    "id": "vkdzyj",
+    "userIds": [
+      "mmsitd"
+    ]
+  },
+  {
+    "scheduleName": "Das 13h00min às 01h00min",
+    "startTime": "2026-05-28T16:00:00.000Z",
+    "endTime": "2026-05-29T10:00:00.000Z",
+    "capacity": 2,
+    "unitId": "39bpm",
+    "id": "cx8lp",
+    "userIds": [
+      "r2h2ea",
+      "d0t3lg"
+    ]
+  },
+  {
+    "scheduleName": "Das 07h00min às 07h00min",
+    "startTime": "2026-05-28T10:00:00.000Z",
+    "endTime": "2026-05-29T10:00:00.000Z",
+    "capacity": 1,
+    "unitId": "39bpm",
+    "id": "uiaecw",
+    "userIds": [
+      "h7kavv"
+    ]
+  },
+  {
+    "scheduleName": "Das 07h00min às 07h00min",
+    "startTime": "2026-05-29T10:00:00.000Z",
+    "endTime": "2026-05-30T10:00:00.000Z",
+    "capacity": 2,
+    "unitId": "39bpm",
+    "id": "8n8stj",
+    "userIds": [
+      "ext2",
+      "9lsvti"
+    ]
+  },
+  {
+    "scheduleName": "Das 13h00min às 01h00min",
+    "startTime": "2026-05-29T16:00:00.000Z",
+    "endTime": "2026-05-30T04:00:00.000Z",
+    "capacity": 2,
+    "unitId": "39bpm",
+    "id": "k3y5k",
+    "userIds": [
+      "r8b1jv"
+    ]
+  },
+  {
+    "scheduleName": "Das 13h00min às 01h00min",
+    "startTime": "2026-05-30T16:00:00.000Z",
+    "endTime": "2026-05-31T04:00:00.000Z",
+    "capacity": 2,
+    "unitId": "39bpm",
+    "id": "ayd34u",
+    "userIds": [
+      "r8b1jv",
+      "b99zkk"
+    ]
+  },
+  {
+    "scheduleName": "Das 18h00min às 06h00min",
+    "startTime": "2026-05-30T21:00:00.000Z",
+    "endTime": "2026-05-31T09:00:00.000Z",
+    "capacity": 2,
+    "unitId": "39bpm",
+    "id": "vgd9h",
+    "userIds": [
+      "aeaf4a",
+      "9lsvti"
+    ]
+  },
+  {
+    "scheduleName": "Das 07h00min às 00h00min",
+    "startTime": "2026-05-31T10:00:00.000Z",
+    "endTime": "2026-06-01T02:59:00.000Z",
+    "capacity": 1,
+    "unitId": "39bpm",
+    "id": "zfx3rh",
+    "userIds": [
+      "mmsitd"
+    ]
+  },
+  {
+    "scheduleName": "Das 12h00min às 00h00min",
+    "startTime": "2026-05-31T15:00:00.000Z",
+    "endTime": "2026-06-01T02:59:00.000Z",
+    "capacity": 4,
+    "unitId": "39bpm",
+    "id": "hldl7q",
+    "userIds": [
+      "5u0bhd",
+      "ext2",
+      "adm39bpm",
+      "xz6o12"
+    ]
   }
 ]

@@ -15,7 +15,7 @@
     "id": "39bpm",
     "name": "39º Batalhão de Polícia Militar",
     "budgetLimit": 15000,
-    "currentSpend": 0
+    "currentSpend": 344.2800000000001
   },
   {
     "id": "41bpm",
@@ -39,6 +39,12 @@
     "id": "43cipm",
     "name": "43ª CIPM (CPE)",
     "budgetLimit": 15000,
+    "currentSpend": 0
+  },
+  {
+    "id": "crpm",
+    "name": "2ª Comando Regional de Polícia Militar (CRPM)",
+    "budgetLimit": 100000,
     "currentSpend": 0
   }
 ]

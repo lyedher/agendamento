@@ -141,9 +141,11 @@ function AdminDashboardContent() {
   // Schedule edit states
   const [editScheduleHours, setEditScheduleHours] = useState({
     startTime: "",
-    endTime: ""
+    endTime: "",
+    capacity: 1
   });
   const [selectedVolunteerId, setSelectedVolunteerId] = useState("");
+  const [selectedVolunteerSummary, setSelectedVolunteerSummary] = useState<any | null>(null);
 
   // Calendar selection states
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
@@ -418,7 +420,8 @@ function AdminDashboardContent() {
 
     setEditScheduleHours({
       startTime: `${String(start.getHours()).padStart(2, '0')}:${String(start.getMinutes()).padStart(2, '0')}`,
-      endTime: `${String(end.getHours()).padStart(2, '0')}:${String(end.getMinutes()).padStart(2, '0')}`
+      endTime: `${String(end.getHours()).padStart(2, '0')}:${String(end.getMinutes()).padStart(2, '0')}`,
+      capacity: s.capacity || 1
     });
     setSelectedVolunteerId("");
   };
@@ -427,7 +430,7 @@ function AdminDashboardContent() {
     if (!editingSchedule) return;
 
     const baseStart = new Date(editingSchedule.startTime);
-    const baseEnd = new Date(editingSchedule.endTime);
+    const baseEnd = new Date(editingSchedule.startTime); // Reset baseEnd to baseStart's date
 
     const startParts = editScheduleHours.startTime.split(":");
     const endParts = editScheduleHours.endTime.split(":");
@@ -441,7 +444,8 @@ function AdminDashboardContent() {
 
     const res = await updateSchedule(editingSchedule.id, {
       startTime: baseStart.toISOString(),
-      endTime: baseEnd.toISOString()
+      endTime: baseEnd.toISOString(),
+      capacity: editScheduleHours.capacity
     });
 
     if (res.success) {
@@ -1110,14 +1114,20 @@ function AdminDashboardContent() {
                             <td className="px-6 py-4">
                               <div className="flex flex-wrap gap-1 max-w-[200px]">
                                 {s.userIds && s.userIds.length > 0 ? (
-                                  s.userIds.slice(0, 3).map((uid: string) => {
-                                    const u = usersList.find(usr => usr.id === uid);
-                                    return u ? (
-                                      <span key={uid} className="text-[10px] font-bold bg-white border border-gray-200 px-2 py-0.5 rounded shadow-sm text-gray-600">
-                                        {u.nickname}
+                                  s.userIds
+                                    .map((uid: string) => usersList.find(usr => usr.id === uid) || { id: uid, rank: "", nickname: "...", sortOrder: 999 })
+                                    .sort((a: any, b: any) => {
+                                      const weightA = RANKS.indexOf(a.rank);
+                                      const weightB = RANKS.indexOf(b.rank);
+                                      if (weightA !== weightB) return weightB - weightA;
+                                      return (a.sortOrder ?? 999) - (b.sortOrder ?? 999);
+                                    })
+                                    .slice(0, 3)
+                                    .map((u: any) => (
+                                      <span key={u.id} className="text-[10px] font-bold bg-white border border-gray-200 px-2 py-0.5 rounded shadow-sm text-gray-600">
+                                        {u.rank} {u.nickname}
                                       </span>
-                                    ) : null;
-                                  })
+                                    ))
                                 ) : (
                                   <span className="text-[10px] text-gray-400 italic">Vazio</span>
                                 )}
@@ -1178,9 +1188,9 @@ function AdminDashboardContent() {
             <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6">
               <div className="space-y-4 border-r pr-0 md:pr-6 border-gray-100">
                 <h4 className="text-sm font-semibold text-gray-700 flex items-center gap-1">
-                  <Calendar className="h-4 w-4 text-[#79A3B1]" /> Ajustar Horários
+                  <Calendar className="h-4 w-4 text-[#79A3B1]" /> Ajustar Horários e Vagas
                 </h4>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-3 gap-3">
                   <div className="space-y-1">
                     <Label className="text-xs font-medium text-gray-600">Hora Inicial</Label>
                     <Input
@@ -1199,9 +1209,18 @@ function AdminDashboardContent() {
                       onChange={(e) => setEditScheduleHours({ ...editScheduleHours, endTime: e.target.value })}
                     />
                   </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-medium text-gray-600">Nº Vagas</Label>
+                    <Input
+                      type="number" min="1"
+                      className="p-2.5 border rounded-lg text-sm focus-visible:ring-[#79A3B1]"
+                      value={editScheduleHours.capacity}
+                      onChange={(e) => setEditScheduleHours({ ...editScheduleHours, capacity: parseInt(e.target.value) || 1 })}
+                    />
+                  </div>
                 </div>
                 <Button size="sm" className="w-full bg-[#79A3B1] text-white hover:bg-[#79A3B1]/90 font-medium" onClick={handleUpdateScheduleHours}>
-                  Atualizar Horários da Escala
+                  Atualizar Dados da Escala
                 </Button>
               </div>
 
@@ -1219,6 +1238,12 @@ function AdminDashboardContent() {
                     <option value="">-- Selecione Policial --</option>
                     {usersList
                       .filter(u => !editingSchedule.userIds.includes(u.id))
+                      .sort((a: any, b: any) => {
+                        const weightA = RANKS.indexOf(a.rank);
+                        const weightB = RANKS.indexOf(b.rank);
+                        if (weightA !== weightB) return weightB - weightA;
+                        return (a.sortOrder ?? 999) - (b.sortOrder ?? 999);
+                      })
                       .map(u => (
                         <option key={u.id} value={u.id}>{u.rank} {u.nickname} ({u.workTeam})</option>
                       ))
@@ -1239,24 +1264,30 @@ function AdminDashboardContent() {
                     <p className="text-gray-400 text-center text-xs py-4">Nenhum voluntário escalado.</p>
                   ) : (
                     <ul className="space-y-2">
-                      {editingSchedule.userIds.map((uid: string, index: number) => {
-                        const user = usersList.find(u => u.id === uid);
-                        return (
-                          <li key={uid} className="flex items-center justify-between bg-white p-2.5 rounded-lg shadow-sm border text-xs">
+                      {editingSchedule.userIds
+                        .map((uid: string) => usersList.find(u => u.id === uid) || { id: uid, rank: "", nickname: "Carregando...", sortOrder: 999 })
+                        .sort((a: any, b: any) => {
+                          const weightA = RANKS.indexOf(a.rank);
+                          const weightB = RANKS.indexOf(b.rank);
+                          if (weightA !== weightB) return weightB - weightA;
+                          return (a.sortOrder ?? 999) - (b.sortOrder ?? 999);
+                        })
+                        .map((user: any, index: number) => (
+                          <li key={user.id} className="flex items-center justify-between bg-white p-2.5 rounded-lg shadow-sm border text-xs">
                             <span className="font-semibold text-gray-800">
-                              {index + 1}. {user ? `${user.rank} ${user.nickname}` : "Carregando..."}
+                              {index + 1}. {user.rank} {user.nickname}
                             </span>
                             <Button
                               variant="ghost"
                               size="sm"
                               className="h-6 w-6 p-0 text-red-500 hover:bg-red-50 rounded-full"
-                              onClick={() => handleRemoveVolunteer(uid)}
+                              onClick={() => handleRemoveVolunteer(user.id)}
                             >
                               <X className="h-3.5 w-3.5" />
                             </Button>
                           </li>
-                        );
-                      })}
+                        ))
+                      }
                     </ul>
                   )}
                 </div>
@@ -1724,12 +1755,18 @@ function AdminDashboardContent() {
                     totalValue += diff * rate;
                   });
 
-                  return { ...u, totalHours, totalValue, count: userSchedules.length };
+                  return { 
+                    ...u, 
+                    totalHours, 
+                    totalValue, 
+                    count: userSchedules.length,
+                    schedules: userSchedules.sort((a,b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
+                  };
                 })
                 .filter(Boolean)
                 .sort((a: any, b: any) => b.totalValue - a.totalValue)
                 .map((u: any) => (
-                  <tr key={u.id} className="hover:bg-gray-50/50 transition-colors">
+                  <tr key={u.id} className="hover:bg-gray-50/50 transition-colors cursor-pointer" onClick={() => setSelectedVolunteerSummary(u)}>
                     <td className="px-6 py-4">
                       <div className="flex flex-col">
                         <span className="text-sm font-black text-gray-900">{u.rank} {u.nickname}</span>
@@ -1742,7 +1779,7 @@ function AdminDashboardContent() {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-center">
-                      <span className="text-sm font-black text-gray-900">{u.totalHours}h</span>
+                      <span className="text-sm font-black text-gray-900">{Number(u.totalHours.toFixed(2))}h</span>
                     </td>
                     <td className="px-6 py-4 text-right">
                       <span className="text-sm font-black text-emerald-600">
@@ -1754,7 +1791,7 @@ function AdminDashboardContent() {
                         <div className="w-24 h-1.5 bg-gray-100 rounded-full overflow-hidden">
                           <div
                             className="h-full bg-emerald-500 transition-all"
-                            style={{ width: `${Math.min(100, (u.totalHours / 50) * 100)}%` }}
+                            style={{ width: `${Math.min(100, (u.totalHours / maxMonthlySlots) * 100)}%` }}
                           />
                         </div>
                         <span className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter">Cota Mensal</span>
@@ -1773,6 +1810,51 @@ function AdminDashboardContent() {
         </div>
       </CardContent>
     </Card>
+
+    {selectedVolunteerSummary && (
+      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in duration-200">
+        <Card className="w-full max-w-2xl border shadow-2xl bg-white rounded-2xl relative animate-in zoom-in-95 duration-200">
+          <button
+            onClick={() => setSelectedVolunteerSummary(null)}
+            className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+          >
+            <X className="h-5 w-5" />
+          </button>
+          <CardHeader className="border-b pb-4">
+            <CardTitle className="text-lg font-bold text-emerald-700 flex items-center gap-2">
+              <CalendarDays className="h-5 w-5" />
+              Agendamentos: {selectedVolunteerSummary.rank} {selectedVolunteerSummary.nickname}
+            </CardTitle>
+            <CardDescription className="text-xs text-gray-500 font-medium uppercase tracking-wider mt-1">
+              {selectedVolunteerSummary.count} escalas no mês atual
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="pt-6 max-h-[60vh] overflow-y-auto">
+            <ul className="space-y-3">
+              {selectedVolunteerSummary.schedules.map((s: any) => {
+                const start = new Date(s.startTime);
+                const end = new Date(s.endTime);
+                return (
+                  <li key={s.id} className="flex justify-between items-center bg-gray-50 border border-gray-100 p-3.5 rounded-xl hover:bg-gray-100 transition-colors">
+                    <div>
+                      <p className="font-bold text-sm text-gray-900 capitalize-first">{s.scheduleName || "Escala AC-4"}</p>
+                      <p className="text-[11px] text-gray-500 font-bold uppercase tracking-wider mt-0.5">
+                        {start.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit' })}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-black text-emerald-600 text-sm bg-emerald-50 px-3 py-1 rounded-lg">
+                        {start.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} às {end.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                    </div>
+                  </li>
+                )
+              })}
+            </ul>
+          </CardContent>
+        </Card>
+      </div>
+    )}
   </TabsContent>
 
   {/* Tab 7: Transferidos */ }

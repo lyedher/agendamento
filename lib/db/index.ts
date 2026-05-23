@@ -69,8 +69,8 @@ export interface AuditLog {
   createdAt: string;
 }
 
-const SUPABASE_URL = process.env.SUPABASE_URL || 'https://gqdrlkwyxkqklmsjyhfq.supabase.co';
-const SUPABASE_KEY = process.env.SUPABASE_KEY || 'sb_publishable_LSgNyMz2kFxGXpPUcPqVCw_rFNoG55K';
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_KEY = process.env.SUPABASE_KEY;
 
 const DB_FILE = path.join(process.cwd(), 'lib', 'db', 'users.json');
 const SCHEDULES_FILE = path.join(process.cwd(), 'lib', 'db', 'schedules.json');
@@ -535,7 +535,9 @@ export const db = {
           headers
         });
         if (res.ok) return await res.json();
-      } catch {}
+      } catch {
+        // Fallback para logs locais em caso de falha da API
+      }
       return getLocalAuditLogs().sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     }
   }

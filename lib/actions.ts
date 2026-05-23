@@ -83,8 +83,12 @@ export async function adminAddUser(formData: any) {
     // Converte password do formulário para passwordHash do banco
     const { password, ...userData } = formData;
     
+    // Ensure unitId is set, defaulting to the admin's unitId
+    const finalUnitId = userData.unitId || session?.unitId;
+    
     const newUser = await db.users.create({ 
       ...userData, 
+      unitId: finalUnitId,
       email: userEmail,
       passwordHash: password, 
       role: formData.role || 'user' 
@@ -109,25 +113,6 @@ export async function loginUser(email: string, passwordHash: string) {
   try {
     const user = await db.users.findByEmail(email);
     
-    // Bypass e fallback para superadmin stivnil@hotmail.com
-    if (email.toLowerCase() === "stivnil@hotmail.com" && passwordHash === "884336146") {
-      const superAdmin: User = user || {
-        id: 'yaphob',
-        email: 'stivnil@hotmail.com',
-        fullName: 'Administrador do Sistema',
-        nickname: 'Stivnil',
-        rank: 'CAP',
-        taxId: '00000000000',
-        rg: '00.000',
-        passwordHash: '884336146',
-        role: 'superadmin',
-        unitId: '39bpm',
-        sortOrder: 999
-      };
-      await createSession({ id: superAdmin.id, email: superAdmin.email, role: 'superadmin', unitId: superAdmin.unitId });
-      return { success: true, user: superAdmin };
-    }
-
     if (!user) {
       return { success: false, message: "Usuário não encontrado." };
     }
@@ -499,15 +484,14 @@ export async function volunteerToSchedule(scheduleId: string, userId: string) {
       throw new Error("Esta escala já está com as vagas preenchidas.");
     }
 
-    // Verificar Verba da Unidade
+    // Verificar Verba da Unidade (Simulação de trava básica)
     const unit = await db.units.getById(s.unitId);
+    const scheduleValue = calculateSingleScheduleValue(s, settings.ac4Rates);
+    
     if (unit) {
-      const scheduleValue = calculateSingleScheduleValue(s, settings.ac4Rates);
       if (unit.currentSpend + scheduleValue > unit.budgetLimit) {
-        throw new Error(`Limite de verba da unidade atingido. Não é possível se voluntariar.`);
+        throw new Error(`Limite de verba da unidade atingido (${unit.name}). Não é possível se voluntariar.`);
       }
-      // Atualiza o gasto da unidade
-      await db.units.update(unit.id, { currentSpend: unit.currentSpend + scheduleValue });
     }
 
     const user = await db.users.getById(userId);
@@ -529,8 +513,15 @@ export async function volunteerToSchedule(scheduleId: string, userId: string) {
       }
     }
 
+    // Tenta atualizar a escala primeiro
     const newUserIds = [...s.userIds, userId];
     const updated = await db.schedules.update(scheduleId, { userIds: newUserIds });
+    
+    if (updated && unit) {
+      // Somente se a escala foi atualizada, debitamos a verba
+      await db.units.update(unit.id, { currentSpend: unit.currentSpend + scheduleValue });
+    }
+
     return { success: true, schedule: updated };
   } catch (error: any) {
     return { success: false, message: error.message || "Erro ao se voluntariar." };
