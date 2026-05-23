@@ -23,6 +23,19 @@ import { maskRG, maskCPF, maskPhone } from "@/lib/utils/masks";
 
 const RANKS = ["Soldado", "Cabo", "3º Sargento", "2º Sargento", "1º Sargento", "Subtenente", "Aspirante", "2º Tenente", "1º Tenente", "Capitão", "Major", "Tenente-Coronel", "Coronel"];
 const TEAMS = ["Alpha", "Bravo", "Charlie", "Delta", "ADM", "Afastado", "Transferido"];
+const FUNCTIONS = [
+  "Comandante de Unidade",
+  "Subcomandante de Unidade",
+  "CPU",
+  "Chefe de Seção",
+  "Auxiliar de Seção",
+  "Comandante de VTR",
+  "Motorista de VTR",
+  "Plantonista / Sentinela",
+  "ARI",
+  "ALI",
+  "Apoio Administrativo"
+];
 
 export default function ProfilePage() {
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -34,7 +47,8 @@ export default function ProfilePage() {
     phone: "",
     workTeam: "",
     photo: "",
-    birthDate: ""
+    birthDate: "",
+    jobFunction: ""
   });
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
@@ -83,7 +97,8 @@ export default function ProfilePage() {
           phone: user.phone || "",
           workTeam: user.workTeam || "",
           photo: user.photo || "",
-          birthDate: user.birthDate || ""
+          birthDate: user.birthDate || "",
+          jobFunction: user.jobFunction || ""
         });
       }
     }
@@ -327,6 +342,22 @@ export default function ProfilePage() {
                       >
                         <option value="">Selecione a equipe...</option>
                         {TEAMS.map(t => <option key={t} value={t}>{t}</option>)}
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Função/Atribuição */}
+                  <div className="space-y-2">
+                    <Label className="text-xs font-bold text-gray-600 uppercase tracking-wider">Função / Atribuição</Label>
+                    <div className="relative">
+                      <Shield className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <select 
+                        value={formData.jobFunction}
+                        onChange={(e) => setFormData({...formData, jobFunction: e.target.value})}
+                        className="w-full h-11 pl-10 pr-3 rounded-md border border-gray-100 bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-[#79A3B1]/20 focus:bg-white transition-all appearance-none"
+                      >
+                        <option value="">Selecione a função...</option>
+                        {FUNCTIONS.map(f => <option key={f} value={f}>{f}</option>)}
                       </select>
                     </div>
                   </div>
