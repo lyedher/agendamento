@@ -14,8 +14,11 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: "Agendamento - Sistema de Escalas",
+  title: "Agendamento",
   description: "Gerenciamento de escalas modernas",
+  icons: {
+    icon: "/assets/pmgo_logo.png",
+  },
 };
 
 export default function RootLayout({
