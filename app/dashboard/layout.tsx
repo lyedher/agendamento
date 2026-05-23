@@ -393,16 +393,18 @@ export default function DashboardLayout({
                   Agendar Escala
                 </button>
 
-                <button 
-                  className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-gray-700 hover:bg-[#79A3B1]/10 rounded-lg transition-colors font-semibold"
-                  onClick={() => {
-                    setIsUserMenuOpen(false);
-                    router.push("/admin/dashboard");
-                  }}
-                >
-                  <Shield className="h-4 w-4 text-[#79A3B1]" />
-                  Painel Administrativo
-                </button>
+                {(currentUser?.role === 'admin' || currentUser?.role === 'superadmin') && (
+                  <button 
+                    className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-gray-700 hover:bg-[#79A3B1]/10 rounded-lg transition-colors font-semibold"
+                    onClick={() => {
+                      setIsUserMenuOpen(false);
+                      router.push("/admin/dashboard");
+                    }}
+                  >
+                    <Shield className="h-4 w-4 text-[#79A3B1]" />
+                    Painel Administrativo
+                  </button>
+                )}
 
                 <div className="px-3 py-1.5 text-[10px] font-bold text-gray-400 uppercase tracking-wider border-t mt-1">
                   Atalhos Rápidos
