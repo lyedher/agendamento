@@ -90,6 +90,24 @@ export default function ProfilePage() {
     load();
   }, []);
 
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Limite de 1.5MB para evitar peso excessivo no banco de dados local
+    if (file.size > 1.5 * 1024 * 1024) {
+      setMessage({ type: 'error', text: "A foto deve ter no máximo 1.5MB." });
+      setTimeout(() => setMessage(null), 3000);
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setFormData(prev => ({ ...prev, photo: reader.result as string }));
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentUser) return;
@@ -147,7 +165,18 @@ export default function ProfilePage() {
                   <User className="h-16 w-16 text-[#79A3B1]" />
                 </div>
               )}
-              <button className="absolute bottom-0 right-0 p-2 bg-[#79A3B1] text-white rounded-full shadow-lg hover:bg-[#79A3B1]/90 transition-all border-2 border-white">
+              <input
+                type="file"
+                id="avatar-upload"
+                accept="image/*"
+                className="hidden"
+                onChange={handlePhotoUpload}
+              />
+              <button 
+                type="button"
+                onClick={() => document.getElementById('avatar-upload')?.click()}
+                className="absolute bottom-0 right-0 p-2 bg-[#79A3B1] text-white rounded-full shadow-lg hover:bg-[#79A3B1]/90 transition-all border-2 border-white"
+              >
                 <Camera className="h-4 w-4" />
               </button>
             </div>
