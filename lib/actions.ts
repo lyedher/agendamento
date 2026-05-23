@@ -371,7 +371,7 @@ function isUserOnDuty(team: string, targetDateString: string, baselineString?: s
   if (team === "ADM") return false;
   
   const timeZone = 'America/Sao_Paulo';
-  const effectiveBaseline = baselineString || '2026-05-01T08:00:00-03:00'; 
+  const effectiveBaseline = baselineString || '2026-05-01T07:00:00-03:00'; 
   const baseline = toZonedTime(effectiveBaseline, timeZone);
   
   const teamOffsets: Record<string, number> = {
@@ -384,13 +384,90 @@ function isUserOnDuty(team: string, targetDateString: string, baselineString?: s
   if (!(team in teamOffsets)) return false;
   
   const target = toZonedTime(targetDateString, timeZone);
-  target.setHours(8, 0, 0, 0); // Consider start of duty
+  target.setHours(7, 0, 0, 0); // Consider start of duty
   
   const diffTime = target.getTime() - baseline.getTime();
   const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
   
   if (diffDays < 0) return false;
   return (diffDays % 4) === teamOffsets[team];
+}
+
+/**
+ * Valida a janela de descanso de 5 horas para um policial.
+ * Deve haver 5 horas de descanso entre escalas (ordinária/extra e extra/extra).
+ */
+export async function validateUserRestWindow(
+  userId: string,
+  targetScheduleId: string,
+  startTimeStr: string,
+  endTimeStr: string
+): Promise<{ valid: boolean; message?: string }> {
+  const timeZone = 'America/Sao_Paulo';
+  const extraStart = new Date(startTimeStr);
+  const extraEnd = new Date(endTimeStr);
+
+  const user = await db.users.getById(userId);
+  if (!user) {
+    return { valid: true };
+  }
+
+  // 1. Validar contra escala ordinária (plantão ordinário das 07:00 às 07:00)
+  if (user.workTeam && user.workTeam !== "ADM" && user.workTeam !== "Afastado" && user.workTeam !== "Transferido" && user.workTeam !== "Externo") {
+    const unitSettings = await db.settings.get(user.unitId);
+    const dutyBaseline = unitSettings?.dutyBaseline;
+
+    // Verificar os dias ao redor da escala extra (2 dias antes e 2 dias depois)
+    const startDay = new Date(extraStart.getTime() - 2 * 24 * 60 * 60 * 1000);
+    const endDay = new Date(extraEnd.getTime() + 2 * 24 * 60 * 60 * 1000);
+
+    for (let d = new Date(startDay); d <= endDay; d.setDate(d.getDate() + 1)) {
+      const dateStrForCheck = formatInTimeZone(d, timeZone, "yyyy-MM-dd'T'12:00:00");
+      if (isUserOnDuty(user.workTeam, dateStrForCheck, dutyBaseline)) {
+        // O plantão ordinário começa às 07:00 AM do dia d e termina às 07:00 AM do dia d+1
+        const ordStart = toZonedTime(formatInTimeZone(d, timeZone, "yyyy-MM-dd'T'07:00:00"), timeZone);
+        const ordEnd = new Date(ordStart.getTime() + 24 * 60 * 60 * 1000);
+
+        // Janela proibida com as 5 horas de descanso antes e depois:
+        const forbiddenStart = new Date(ordStart.getTime() - 5 * 60 * 60 * 1000);
+        const forbiddenEnd = new Date(ordEnd.getTime() + 5 * 60 * 60 * 1000);
+
+        // Se a escala extra sobrepõe a janela proibida:
+        if (extraStart < forbiddenEnd && extraEnd > forbiddenStart) {
+          const ordStartFormatted = formatInTimeZone(ordStart, timeZone, "dd/MM/yyyy HH:mm");
+          const ordEndFormatted = formatInTimeZone(ordEnd, timeZone, "dd/MM/yyyy HH:mm");
+          return {
+            valid: false,
+            message: `Intervalo de descanso insuficiente em relação ao plantão ordinário da equipe ${user.workTeam} das ${ordStartFormatted} às ${ordEndFormatted}. É necessária uma janela de descanso de 5 horas antes e depois.`
+          };
+        }
+      }
+    }
+  }
+
+  // 2. Validar contra outras escalas extras
+  const schedules = await db.schedules.getAll();
+  for (const s of schedules) {
+    if (s.id !== targetScheduleId && s.userIds?.includes(userId)) {
+      const existingStart = new Date(s.startTime);
+      const existingEnd = new Date(s.endTime);
+
+      // Janela proibida ao redor da escala extra existente:
+      const forbiddenStart = new Date(existingStart.getTime() - 5 * 60 * 60 * 1000);
+      const forbiddenEnd = new Date(existingEnd.getTime() + 5 * 60 * 60 * 1000);
+
+      if (extraStart < forbiddenEnd && extraEnd > forbiddenStart) {
+        const existingStartFormatted = formatInTimeZone(existingStart, timeZone, "dd/MM/yyyy HH:mm");
+        const existingEndFormatted = formatInTimeZone(existingEnd, timeZone, "dd/MM/yyyy HH:mm");
+        return {
+          valid: false,
+          message: `Conflito com outra escala extra agendada (${s.scheduleName} das ${existingStartFormatted} às ${existingEndFormatted}). É necessária uma janela de descanso de 5 horas entre escalas extras.`
+        };
+      }
+    }
+  }
+
+  return { valid: true };
 }
 
 export async function getSettings(unitId?: string) {
@@ -430,26 +507,29 @@ export async function updateSchedule(id: string, data: any) {
 
     // If adding volunteers
     if (data.userIds && data.userIds.length > currentSchedule.userIds.length) {
-      const newUserId = data.userIds[data.userIds.length - 1];
-      const user = await db.users.getById(newUserId);
+      const newAddedUserIds = data.userIds.filter((uid: string) => !currentSchedule.userIds.includes(uid));
       const settings = await db.settings.get(currentSchedule.unitId);
-      
-      if (user) {
-        // Rule 1: Not on duty day
-        const unitSettings = await db.settings.get(user.unitId);
-        if (isUserOnDuty(user.workTeam, currentSchedule.startTime, unitSettings?.dutyBaseline)) {
-          throw new Error(`O policial da equipe ${user.workTeam} está de plantão ordinário neste dia.`);
-        }
-        
-        // Rule 2: Max monthly slots
-        const userSchedules = schedules.filter(s => 
-          s.userIds?.includes(user.id) &&
-          new Date(s.startTime).getMonth() === new Date(currentSchedule.startTime).getMonth() &&
-          new Date(s.startTime).getFullYear() === new Date(currentSchedule.startTime).getFullYear()
-        );
-        
-        if (userSchedules.length >= settings.maxMonthlySlots) {
-          throw new Error(`O policial já atingiu o limite mensal de ${settings.maxMonthlySlots} agendamentos.`);
+
+      for (const newUserId of newAddedUserIds) {
+        const user = await db.users.getById(newUserId);
+        if (user) {
+          // Validar a janela de descanso de 5 horas (abrange escala ordinária e extras)
+          const restValidation = await validateUserRestWindow(newUserId, id, currentSchedule.startTime, currentSchedule.endTime);
+          if (!restValidation.valid) {
+            throw new Error(restValidation.message);
+          }
+          
+          // Rule 2: Max monthly slots
+          const userSchedules = schedules.filter(s => 
+            s.id !== id &&
+            s.userIds?.includes(user.id) &&
+            new Date(s.startTime).getMonth() === new Date(currentSchedule.startTime).getMonth() &&
+            new Date(s.startTime).getFullYear() === new Date(currentSchedule.startTime).getFullYear()
+          );
+          
+          if (userSchedules.length >= settings.maxMonthlySlots) {
+            throw new Error(`O policial já atingiu o limite mensal de ${settings.maxMonthlySlots} agendamentos.`);
+          }
         }
       }
     }
@@ -499,9 +579,10 @@ export async function volunteerToSchedule(scheduleId: string, userId: string) {
 
     const user = await db.users.getById(userId);
     if (user) {
-      const unitSettings = await db.settings.get(user.unitId);
-      if (isUserOnDuty(user.workTeam, s.startTime, unitSettings?.dutyBaseline)) {
-        throw new Error(`Você está de plantão ordinário (Equipe ${user.workTeam}) neste dia.`);
+      // Validar a janela de descanso de 5 horas (abrange escala ordinária e extras)
+      const restValidation = await validateUserRestWindow(userId, scheduleId, s.startTime, s.endTime);
+      if (!restValidation.valid) {
+        throw new Error(restValidation.message);
       }
 
       // Max monthly slots
