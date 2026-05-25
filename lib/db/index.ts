@@ -225,7 +225,7 @@ function saveLocalAuditLogs(logs: AuditLog[]) {
   }
 }
 
-function mapUserToDb(user: Partial<User>) {
+export function mapUserToDb(user: Partial<User>) {
   const mapped: any = {};
   if (user.id !== undefined) mapped.id = user.id;
   if (user.email !== undefined) mapped.email = user.email;
@@ -240,11 +240,11 @@ function mapUserToDb(user: Partial<User>) {
   if (user.workTeam !== undefined) mapped.work_team = user.workTeam;
   if (user.sortOrder !== undefined) mapped.sort_order = user.sortOrder;
   if (user.role !== undefined) mapped.role = user.role;
-  if (user.unitId !== undefined) mapped.unit_id = user.unitId;
+  if (user.unitId !== undefined) mapped.unit_id = user.unitId || null;
   if (user.photo !== undefined) mapped.avatar_url = user.photo;
   if (user.birthDate !== undefined) mapped.birth_date = user.birthDate || null;
   if (user.serviceType !== undefined) mapped.service_type = user.serviceType;
-  if (user.absenceReason !== undefined) mapped.absence_reason = user.absenceReason;
+  if (user.absenceReason !== undefined) mapped.absence_reason = user.absenceReason || null;
   if (user.absenceStartDate !== undefined) mapped.absence_start_date = user.absenceStartDate || null;
   if (user.returnDate !== undefined) mapped.return_date = user.returnDate || null;
   if (user.transferDate !== undefined) mapped.transfer_date = user.transferDate || null;
@@ -253,7 +253,7 @@ function mapUserToDb(user: Partial<User>) {
   return mapped;
 }
 
-function mapDbToUser(dbUser: any): User {
+export function mapDbToUser(dbUser: any): User {
   if (!dbUser) return dbUser;
   return {
     id: dbUser.id,
@@ -282,7 +282,7 @@ function mapDbToUser(dbUser: any): User {
   };
 }
 
-function mapDbToSettings(dbRow: any): AppSettings {
+export function mapDbToSettings(dbRow: any): AppSettings {
   if (!dbRow) return dbRow;
   return {
     id: dbRow.unit_id || Math.random().toString(36).substring(7),
@@ -295,7 +295,7 @@ function mapDbToSettings(dbRow: any): AppSettings {
   };
 }
 
-function mapSettingsToDb(settings: Partial<AppSettings>): any {
+export function mapSettingsToDb(settings: Partial<AppSettings>): any {
   if (!settings) return settings;
   const dbRow: any = {};
   if (settings.unitId !== undefined) dbRow.unit_id = settings.unitId;
@@ -307,7 +307,7 @@ function mapSettingsToDb(settings: Partial<AppSettings>): any {
   return dbRow;
 }
 
-function mapDbToSchedule(dbRow: any): Schedule {
+export function mapDbToSchedule(dbRow: any): Schedule {
   if (!dbRow) return dbRow;
   return {
     id: dbRow.id,
@@ -320,7 +320,7 @@ function mapDbToSchedule(dbRow: any): Schedule {
   };
 }
 
-function mapScheduleToDb(schedule: Partial<Schedule>): any {
+export function mapScheduleToDb(schedule: Partial<Schedule>): any {
   if (!schedule) return schedule;
   const dbRow: any = {};
   if (schedule.id !== undefined) dbRow.id = schedule.id;
@@ -345,6 +345,13 @@ export const db = {
         });
         if (!res.ok) throw new Error();
         const data = await res.json();
+        try {
+          const users = getLocalUsers();
+          users.push(newUser);
+          saveLocalUsers(users);
+        } catch (e) {
+          console.warn("Failed to sync local users on create:", e);
+        }
         return data[0] || newUser;
       } catch {
         const users = getLocalUsers();
@@ -403,6 +410,16 @@ export const db = {
         });
         if (!res.ok) throw new Error();
         const updated = await res.json();
+        try {
+          const users = getLocalUsers();
+          const index = users.findIndex(u => u.id === id);
+          if (index !== -1) {
+            users[index] = { ...users[index], ...data };
+            saveLocalUsers(users);
+          }
+        } catch (e) {
+          console.warn("Failed to sync local users on update:", e);
+        }
         return mapDbToUser(updated[0]);
 
       } catch {
@@ -421,6 +438,13 @@ export const db = {
           headers
         });
         if (!res.ok) throw new Error();
+        try {
+          const users = getLocalUsers();
+          const filtered = users.filter(u => String(u.id).trim() !== String(id).trim());
+          saveLocalUsers(filtered);
+        } catch (e) {
+          console.warn("Failed to sync local users on delete:", e);
+        }
         return true;
       } catch (err) {
         const users = getLocalUsers();
@@ -447,6 +471,13 @@ export const db = {
         });
         if (!res.ok) throw new Error();
         const data = await res.json();
+        try {
+          const schedules = getLocalSchedules();
+          schedules.push(newSchedule);
+          saveLocalSchedules(schedules);
+        } catch (e) {
+          console.warn("Failed to sync local schedules on create:", e);
+        }
         return mapDbToSchedule(data[0]) || newSchedule;
       } catch {
         const schedules = getLocalSchedules();
@@ -476,6 +507,16 @@ export const db = {
         });
         if (!res.ok) throw new Error();
         const updated = await res.json();
+        try {
+          const schedules = getLocalSchedules();
+          const index = schedules.findIndex(s => s.id === id);
+          if (index !== -1) {
+            schedules[index] = { ...schedules[index], ...data };
+            saveLocalSchedules(schedules);
+          }
+        } catch (e) {
+          console.warn("Failed to sync local schedules on update:", e);
+        }
         return mapDbToSchedule(updated[0]);
       } catch {
         const schedules = getLocalSchedules();
@@ -493,6 +534,13 @@ export const db = {
           headers
         });
         if (!res.ok) throw new Error();
+        try {
+          const schedules = getLocalSchedules();
+          const filtered = schedules.filter(s => s.id !== id);
+          saveLocalSchedules(filtered);
+        } catch (e) {
+          console.warn("Failed to sync local schedules on delete:", e);
+        }
         return true;
       } catch {
         const schedules = getLocalSchedules();
@@ -514,6 +562,13 @@ export const db = {
         });
         if (!res.ok) throw new Error();
         const data = await res.json();
+        try {
+          const units = getLocalUnits();
+          units.push(newUnit);
+          saveLocalUnits(units);
+        } catch (e) {
+          console.warn("Failed to sync local units on create:", e);
+        }
         return data[0] || newUnit;
       } catch {
         const units = getLocalUnits();
@@ -550,6 +605,16 @@ export const db = {
         });
         if (!res.ok) throw new Error();
         const updated = await res.json();
+        try {
+          const units = getLocalUnits();
+          const index = units.findIndex(u => u.id === id);
+          if (index !== -1) {
+            units[index] = { ...units[index], ...data };
+            saveLocalUnits(units);
+          }
+        } catch (e) {
+          console.warn("Failed to sync local units on update:", e);
+        }
         return updated[0];
       } catch {
         const units = getLocalUnits();
@@ -600,6 +665,16 @@ export const db = {
         
         if (res.ok) {
           const updated = await res.json();
+          try {
+            const settingsList = getLocalSettings();
+            const index = settingsList.findIndex(s => s.unitId === unitId);
+            if (index !== -1) {
+              settingsList[index] = { ...settingsList[index], ...data };
+              saveLocalSettings(settingsList);
+            }
+          } catch (e) {
+            console.warn("Failed to sync local settings on update:", e);
+          }
           if (updated && updated[0]) return mapDbToSettings(updated[0]);
         }
         throw new Error("Supabase request failed or returned empty data");

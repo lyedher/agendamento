@@ -640,6 +640,7 @@ export async function volunteerToSchedule(scheduleId: string, userId: string) {
   try {
     const schedules = await db.schedules.getAll();
     const s = schedules.find(x => x.id === scheduleId);
+    console.log("volunteerToSchedule - ID buscado:", scheduleId, "Total de escalas:", schedules.length, "Encontrada:", !!s);
     if (!s) throw new Error("Escala não encontrada.");
 
     // Pegar configurações DA UNIDADE da escala
@@ -711,6 +712,7 @@ export async function unvolunteerFromSchedule(scheduleId: string, userId: string
   try {
     const schedules = await db.schedules.getAll();
     const s = schedules.find(x => x.id === scheduleId);
+    console.log("unvolunteerFromSchedule - ID buscado:", scheduleId, "Total de escalas:", schedules.length, "Encontrada:", !!s);
     if (!s) throw new Error("Escala não encontrada.");
     
     // Atualizar verba da unidade (reverter gasto)
