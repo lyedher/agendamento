@@ -242,12 +242,12 @@ function mapUserToDb(user: Partial<User>) {
   if (user.role !== undefined) mapped.role = user.role;
   if (user.unitId !== undefined) mapped.unit_id = user.unitId;
   if (user.photo !== undefined) mapped.avatar_url = user.photo;
-  if (user.birthDate !== undefined) mapped.birth_date = user.birthDate;
+  if (user.birthDate !== undefined) mapped.birth_date = user.birthDate || null;
   if (user.serviceType !== undefined) mapped.service_type = user.serviceType;
   if (user.absenceReason !== undefined) mapped.absence_reason = user.absenceReason;
-  if (user.absenceStartDate !== undefined) mapped.absence_start_date = user.absenceStartDate;
-  if (user.returnDate !== undefined) mapped.return_date = user.returnDate;
-  if (user.transferDate !== undefined) mapped.transfer_date = user.transferDate;
+  if (user.absenceStartDate !== undefined) mapped.absence_start_date = user.absenceStartDate || null;
+  if (user.returnDate !== undefined) mapped.return_date = user.returnDate || null;
+  if (user.transferDate !== undefined) mapped.transfer_date = user.transferDate || null;
   if (user.fichaData !== undefined) mapped.ficha_data = user.fichaData;
   if (user.teamHistory !== undefined) mapped.team_history = user.teamHistory;
   return mapped;
