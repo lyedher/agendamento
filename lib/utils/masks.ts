@@ -43,3 +43,23 @@ export const formatRG = (rg: string) => {
   }
   return rg;
 };
+
+export const formatCPF = (cpf: string) => {
+  if (!cpf) return "—";
+  const clean = cpf.replace(/\D/g, '');
+  if (clean.length === 11) {
+    return `${clean.slice(0, 3)}.${clean.slice(3, 6)}.${clean.slice(6, 9)}-${clean.slice(9, 11)}`;
+  }
+  return cpf;
+};
+
+export const formatPhone = (phone: string) => {
+  if (!phone) return "—";
+  const clean = phone.replace(/\D/g, '');
+  if (clean.length === 11) {
+    return `(${clean.slice(0, 2)}) ${clean.slice(2, 7)}-${clean.slice(7, 11)}`;
+  } else if (clean.length === 10) {
+    return `(${clean.slice(0, 2)}) ${clean.slice(2, 6)}-${clean.slice(6, 10)}`;
+  }
+  return phone;
+};

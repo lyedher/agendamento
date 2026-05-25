@@ -92,9 +92,9 @@ export default function ProfilePage() {
         setFormData({
           nickname: user.nickname || "",
           rank: user.rank || "",
-          rg: user.rg || "",
-          taxId: user.taxId || "",
-          phone: user.phone || "",
+          rg: maskRG(user.rg || ""),
+          taxId: maskCPF(user.taxId || ""),
+          phone: maskPhone(user.phone || ""),
           workTeam: user.workTeam || "",
           photo: user.photo || "",
           birthDate: user.birthDate || "",

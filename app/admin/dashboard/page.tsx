@@ -13,7 +13,7 @@ import { Calendar, Users, LogOut, Printer, ShieldAlert, FileText, AlertCircle, S
 import { getUsers, updateUser, getSchedules, createSchedule, deleteSchedule, updateSchedule, adminAddUser, getSettings, updateSettings, getCurrentUser, getUnits, deleteUser, promoteUserToAdmin, logout } from "@/lib/actions";
 import { calculateSingleScheduleValue, calculateUserAc4Summary } from "@/lib/utils/calculations";
 
-import { maskRG, maskCPF, maskPhone, formatRG } from "@/lib/utils/masks";
+import { maskRG, maskCPF, maskPhone, formatRG, formatCPF, formatPhone } from "@/lib/utils/masks";
 
 const RANKS = ["Soldado", "Cabo", "3º Sargento", "2º Sargento", "1º Sargento", "Subtenente", "Aspirante", "2º Tenente", "1º Tenente", "Capitão", "Major", "Tenente-Coronel", "Coronel"];
 const FUNCTIONS = [
@@ -766,7 +766,7 @@ function AdminDashboardContent() {
                                     <td className="px-6 py-4">
                                       <div className="flex flex-col">
                                         <span className="text-xs font-bold text-gray-700">RG: {formatRG(m.rg)}</span>
-                                        <span className="text-[10px] text-gray-400 font-medium">CPF: {m.taxId}</span>
+                                        <span className="text-[10px] text-gray-400 font-medium">CPF: {formatCPF(m.taxId)}</span>
                                       </div>
                                     </td>
                                     <td className="px-6 py-4">
@@ -1375,7 +1375,7 @@ function AdminDashboardContent() {
                     <td className="px-6 py-4">
                       <div className="flex flex-col gap-0.5">
                         <span className="text-xs font-bold text-gray-700">RG: {formatRG(u.rg)}</span>
-                        <span className="text-[10px] text-gray-400 font-medium">CPF: {u.taxId}</span>
+                        <span className="text-[10px] text-gray-400 font-medium">CPF: {formatCPF(u.taxId)}</span>
                       </div>
                     </td>
                     <td className="px-6 py-4">
@@ -1664,7 +1664,7 @@ function AdminDashboardContent() {
                     <td className="px-6 py-4">
                       <div className="flex flex-col">
                         <span className="text-xs font-bold text-gray-700">RG: {formatRG(u.rg)}</span>
-                        <span className="text-[10px] text-gray-400 font-medium">CPF: {u.taxId}</span>
+                        <span className="text-[10px] text-gray-400 font-medium">CPF: {formatCPF(u.taxId)}</span>
                       </div>
                     </td>
                     <td className="px-6 py-4">
@@ -1900,7 +1900,7 @@ function AdminDashboardContent() {
                     <td className="px-6 py-4">
                       <div className="flex flex-col">
                         <span className="text-xs font-bold text-gray-700">RG: {formatRG(u.rg)}</span>
-                        <span className="text-[10px] text-gray-400 font-medium">CPF: {u.taxId}</span>
+                        <span className="text-[10px] text-gray-400 font-medium">CPF: {formatCPF(u.taxId)}</span>
                       </div>
                     </td>
                     <td className="px-6 py-4">
@@ -2178,7 +2178,7 @@ function AdminDashboardContent() {
               <Input
                 type="text"
                 className="p-2.5 border rounded-lg text-sm focus-visible:ring-[#79A3B1]"
-                value={editingUser.taxId || ""}
+                value={maskCPF(editingUser.taxId || "")}
                 onChange={(e) => setEditingUser({ ...editingUser, taxId: maskCPF(e.target.value) })}
               />
             </div>
@@ -2188,7 +2188,7 @@ function AdminDashboardContent() {
               <Input
                 type="text"
                 className="p-2.5 border rounded-lg text-sm focus-visible:ring-[#79A3B1]"
-                value={editingUser.rg || ""}
+                value={maskRG(editingUser.rg || "")}
                 onChange={(e) => setEditingUser({ ...editingUser, rg: maskRG(e.target.value) })}
               />
             </div>
@@ -2198,7 +2198,7 @@ function AdminDashboardContent() {
               <Input
                 type="text"
                 className="p-2.5 border rounded-lg text-sm focus-visible:ring-[#79A3B1]"
-                value={editingUser.phone || ""}
+                value={maskPhone(editingUser.phone || "")}
                 onChange={(e) => setEditingUser({ ...editingUser, phone: maskPhone(e.target.value) })}
               />
             </div>
