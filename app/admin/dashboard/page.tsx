@@ -287,7 +287,19 @@ function AdminDashboardContent() {
     let updatedTeamHistory = editingUser.teamHistory || originalUser?.teamHistory || "";
 
     if (originalTeam && editingUser.workTeam !== originalTeam) {
-      const transitionDate = editingUser.teamTransitionDate || (() => {
+      const transitionDate = (() => {
+        if (editingUser.workTeam === 'Afastado' && editingUser.absenceStartDate) {
+          return editingUser.absenceStartDate;
+        }
+        if (editingUser.workTeam === 'Transferido' && editingUser.transferDate) {
+          return editingUser.transferDate;
+        }
+        if (originalTeam === 'Afastado' && (editingUser.returnDate || originalUser?.returnDate)) {
+          return editingUser.returnDate || originalUser?.returnDate;
+        }
+        if (editingUser.teamTransitionDate) {
+          return editingUser.teamTransitionDate;
+        }
         const d = new Date();
         const pad = (n: number) => n.toString().padStart(2, '0');
         return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
