@@ -32,6 +32,7 @@ CREATE TABLE users (
     return_date DATE,
     transfer_date DATE,
     service_type TEXT,
+    team_history TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 

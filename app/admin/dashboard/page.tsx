@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Calendar, Users, LogOut, Printer, ShieldAlert, FileText, AlertCircle, Search, Edit3, Check, Trash2, Plus, CalendarDays, X, UserPlus, Shield, Calculator, UserCheck, TrendingUp, ShieldCheck, UsersRound, AlertTriangle, Settings, Clock, Lock, Instagram, MessageCircle, ClipboardList } from "lucide-react";
 import { getUsers, updateUser, getSchedules, createSchedule, deleteSchedule, updateSchedule, adminAddUser, getSettings, updateSettings, getCurrentUser, getUnits, deleteUser, promoteUserToAdmin, logout } from "@/lib/actions";
-import { calculateSingleScheduleValue, calculateUserAc4Summary } from "@/lib/utils/calculations";
+import { calculateSingleScheduleValue, calculateUserAc4Summary, getUserTeamOnDate } from "@/lib/utils/calculations";
 
 import { maskRG, maskCPF, maskPhone, formatRG, formatCPF, formatPhone } from "@/lib/utils/masks";
 
@@ -280,6 +280,58 @@ function AdminDashboardContent() {
   // User Handlers
   const handleSaveUser = async () => {
     if (!editingUser) return;
+
+    const originalUser = usersList.find(u => u.id === editingUser.id);
+    const originalTeam = originalUser?.workTeam;
+    
+    let updatedTeamHistory = editingUser.teamHistory || originalUser?.teamHistory || "";
+
+    if (originalTeam && editingUser.workTeam !== originalTeam) {
+      const transitionDate = editingUser.teamTransitionDate || (() => {
+        const d = new Date();
+        const pad = (n: number) => n.toString().padStart(2, '0');
+        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+      })();
+
+      let historyArray: any[] = [];
+      if (updatedTeamHistory && updatedTeamHistory.trim() !== "") {
+        try {
+          historyArray = JSON.parse(updatedTeamHistory);
+        } catch (e) {
+          console.error("Erro ao analisar histórico antigo:", e);
+        }
+      }
+
+      // Se o histórico estiver vazio, criamos uma entrada inicial para o time original
+      if (historyArray.length === 0) {
+        historyArray.push({
+          team: originalTeam,
+          startDate: "2026-05-01", // Início padrão do sistema
+          endDate: ""
+        });
+      }
+
+      // Encontrar a última entrada do histórico e definir a data de fim dela como um dia antes da transição
+      const lastEntry = historyArray[historyArray.length - 1];
+      if (lastEntry) {
+        // Para calcular um dia antes de transitionDate:
+        const tDate = new Date(transitionDate + 'T12:00:00');
+        tDate.setDate(tDate.getDate() - 1);
+        const pad = (n: number) => n.toString().padStart(2, '0');
+        const dayBeforeStr = `${tDate.getFullYear()}-${pad(tDate.getMonth() + 1)}-${pad(tDate.getDate())}`;
+        lastEntry.endDate = dayBeforeStr;
+      }
+
+      // Adicionar a nova entrada para o novo time
+      historyArray.push({
+        team: editingUser.workTeam,
+        startDate: transitionDate,
+        endDate: ""
+      });
+
+      updatedTeamHistory = JSON.stringify(historyArray);
+    }
+
     const updateData: any = {
       rank: editingUser.rank,
       jobFunction: editingUser.workTeam === 'Transferido' ? "" : editingUser.jobFunction,
@@ -298,6 +350,7 @@ function AdminDashboardContent() {
       absenceStartDate: editingUser.workTeam === 'Afastado' ? (editingUser.absenceStartDate || "") : "",
       returnDate: editingUser.workTeam === 'Transferido' ? "" : (editingUser.returnDate || ""),
       transferDate: editingUser.workTeam === 'Transferido' ? (editingUser.transferDate || "") : "",
+      teamHistory: updatedTeamHistory,
     };
 
     if (editingUser.password && editingUser.password.trim() !== "") {
@@ -705,7 +758,11 @@ function AdminDashboardContent() {
                     const dateStr = date.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
 
                     const teamMembers = usersList
-                      .filter(u => u.workTeam === teamOnDuty)
+                      .filter(u => {
+                        const pad = (n: number) => n.toString().padStart(2, '0');
+                        const checkDayStr = `${currentYear}-${pad(currentMonth + 1)}-${pad(day)}`;
+                        return getUserTeamOnDate(u, checkDayStr) === teamOnDuty;
+                      })
                       .sort((a, b) => {
                         const isPlantonistaA = a.jobFunction === 'Plantonista';
                         const isPlantonistaB = b.jobFunction === 'Plantonista';
@@ -2259,6 +2316,33 @@ function AdminDashboardContent() {
                 {TEAMS.map(t => <option key={t} value={t}>{t}</option>)}
               </select>
             </div>
+
+            {(() => {
+              const originalUser = usersList.find(u => u.id === editingUser.id);
+              const originalTeam = originalUser?.workTeam;
+              const isTeamChanged = originalTeam && editingUser.workTeam !== originalTeam;
+              const activeTeams = ["Alpha", "Bravo", "Charlie", "Delta", "ADM"];
+              const showTransition = isTeamChanged && activeTeams.includes(editingUser.workTeam) && activeTeams.includes(originalTeam);
+              if (!showTransition) return null;
+              return (
+                <div className="space-y-1 animate-in fade-in slide-in-from-top-2 duration-300 bg-blue-50/50 p-3 rounded-xl border border-blue-100">
+                  <Label className="text-xs font-semibold text-blue-600">Data de Início na Nova Equipe</Label>
+                  <Input
+                    type="date"
+                    className="w-full p-2.5 border rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all focus-visible:ring-blue-500"
+                    value={editingUser.teamTransitionDate || (() => {
+                      const d = new Date();
+                      const pad = (n: number) => n.toString().padStart(2, '0');
+                      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+                    })()}
+                    onChange={(e) => setEditingUser({ ...editingUser, teamTransitionDate: e.target.value })}
+                  />
+                  <span className="text-[9px] text-blue-500 block leading-tight font-medium mt-1">
+                    O militar figurará na equipe antiga ({originalTeam}) até o dia anterior a esta data, e na nova equipe ({editingUser.workTeam}) a partir desta data.
+                  </span>
+                </div>
+              );
+            })()}
 
             {editingUser.workTeam !== "Afastado" && editingUser.workTeam !== "Transferido" && (
               <div className="space-y-1 animate-in fade-in slide-in-from-top-2 duration-300">

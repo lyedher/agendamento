@@ -249,6 +249,7 @@ function mapUserToDb(user: Partial<User>) {
   if (user.returnDate !== undefined) mapped.return_date = user.returnDate;
   if (user.transferDate !== undefined) mapped.transfer_date = user.transferDate;
   if (user.fichaData !== undefined) mapped.ficha_data = user.fichaData;
+  if (user.teamHistory !== undefined) mapped.team_history = user.teamHistory;
   return mapped;
 }
 
@@ -276,7 +277,8 @@ function mapDbToUser(dbUser: any): User {
     absenceStartDate: dbUser.absence_start_date,
     returnDate: dbUser.return_date,
     transferDate: dbUser.transfer_date,
-    fichaData: dbUser.ficha_data
+    fichaData: dbUser.ficha_data,
+    teamHistory: dbUser.team_history
   };
 }
 

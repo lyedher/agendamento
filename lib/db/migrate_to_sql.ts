@@ -30,7 +30,8 @@ function generateSql() {
         const returnDate = u.returnDate ? `'${u.returnDate}'` : 'NULL';
         const transferDate = u.transferDate ? `'${u.transferDate}'` : 'NULL';
         const serviceType = u.serviceType ? `'${u.serviceType}'` : 'NULL';
-        sql += `INSERT INTO users (id, full_name, nickname, rank, tax_id, rg, email, password_hash, phone, job_function, work_team, sort_order, role, unit_id, absence_reason, absence_start_date, return_date, transfer_date, service_type) VALUES ('${u.id}', '${u.fullName.replace(/'/g, "''")}', '${u.nickname.replace(/'/g, "''")}', '${u.rank}', '${u.taxId}', '${u.rg}', '${u.email}', '${u.passwordHash}', '${u.phone || ''}', '${u.jobFunction || ''}', '${u.workTeam || ''}', ${u.sortOrder || 999}, '${role}', ${unitId}, ${absenceReason}, ${absenceStartDate}, ${returnDate}, ${transferDate}, ${serviceType}) ON CONFLICT (id) DO NOTHING;\n`;
+        const teamHistory = u.teamHistory ? `'${u.teamHistory.replace(/'/g, "''")}'` : 'NULL';
+        sql += `INSERT INTO users (id, full_name, nickname, rank, tax_id, rg, email, password_hash, phone, job_function, work_team, sort_order, role, unit_id, absence_reason, absence_start_date, return_date, transfer_date, service_type, team_history) VALUES ('${u.id}', '${u.fullName.replace(/'/g, "''")}', '${u.nickname.replace(/'/g, "''")}', '${u.rank}', '${u.taxId}', '${u.rg}', '${u.email}', '${u.passwordHash}', '${u.phone || ''}', '${u.jobFunction || ''}', '${u.workTeam || ''}', ${u.sortOrder || 999}, '${role}', ${unitId}, ${absenceReason}, ${absenceStartDate}, ${returnDate}, ${transferDate}, ${serviceType}, ${teamHistory}) ON CONFLICT (id) DO NOTHING;\n`;
     });
     sql += '\n';
 

@@ -98,3 +98,25 @@ export const calculateUserAc4Summary = (userId: string, schedules: any[], rates:
 
   return { totalHours, totalValue, extraCount, blueDayHours, blueNightHours, redDayHours, redNightHours };
 };
+
+export const getUserTeamOnDate = (user: any, dateStr: string): string => {
+  if (user.teamHistory && user.teamHistory.trim() !== "") {
+    try {
+      const history = JSON.parse(user.teamHistory);
+      if (Array.isArray(history) && history.length > 0) {
+        for (const entry of history) {
+          const start = entry.startDate || "";
+          const end = entry.endDate || "";
+          const afterStart = start === "" || dateStr >= start;
+          const beforeEnd = end === "" || dateStr <= end;
+          if (afterStart && beforeEnd) {
+            return entry.team;
+          }
+        }
+      }
+    } catch (e) {
+      console.error("Erro ao analisar teamHistory para o militar", user.id, e);
+    }
+  }
+  return user.workTeam || "";
+};

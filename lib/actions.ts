@@ -3,7 +3,7 @@
 import { db, User } from "./db";
 import { createSession, verifySession, clearSession } from "./auth";
 import { toZonedTime, formatInTimeZone } from 'date-fns-tz';
-import { calculateSingleScheduleValue } from "./utils/calculations";
+import { calculateSingleScheduleValue, getUserTeamOnDate } from "./utils/calculations";
 
 export async function validateInviteCode(inviteCode: string) {
   try {
@@ -472,7 +472,9 @@ export async function validateUserRestWindow(
   // Só validamos escala ordinária se ele NÃO estiver de Licença Especial (pois licença especial isenta o ordinário)
   const isLicencaEspecial = isCurrentlyAway && absenceReasonStr === "Lic. Especial";
   
-  if (!isLicencaEspecial && user.workTeam && user.workTeam !== "ADM" && user.workTeam !== "Afastado" && user.workTeam !== "Transferido" && user.workTeam !== "Externo") {
+  const currentTeamOnDate = getUserTeamOnDate(user, scheduleDateStr);
+  
+  if (!isLicencaEspecial && currentTeamOnDate && currentTeamOnDate !== "ADM" && currentTeamOnDate !== "Afastado" && currentTeamOnDate !== "Transferido" && currentTeamOnDate !== "Externo") {
     const unitSettings = await db.settings.get(user.unitId);
     const dutyBaseline = unitSettings?.dutyBaseline;
 
@@ -514,7 +516,9 @@ export async function validateUserRestWindow(
         continue; // Ignora o plantão ordinário
       }
 
-      if (isUserOnDuty(user.workTeam, dateStrForCheck, dutyBaseline)) {
+      const teamOnD = getUserTeamOnDate(user, checkDayStr);
+
+      if (teamOnD && teamOnD !== "ADM" && teamOnD !== "Afastado" && teamOnD !== "Transferido" && teamOnD !== "Externo" && isUserOnDuty(teamOnD, dateStrForCheck, dutyBaseline)) {
         // O plantão ordinário começa às 07:00 AM do dia d e termina às 07:00 AM do dia d+1
         const ordStart = toZonedTime(formatInTimeZone(d, timeZone, "yyyy-MM-dd'T'07:00:00"), timeZone);
         const ordEnd = new Date(ordStart.getTime() + 24 * 60 * 60 * 1000);
@@ -529,7 +533,7 @@ export async function validateUserRestWindow(
           const ordEndFormatted = formatInTimeZone(ordEnd, timeZone, "dd/MM/yyyy HH:mm");
           return {
             valid: false,
-            message: `Intervalo de descanso insuficiente em relação ao plantão ordinário da equipe ${user.workTeam} das ${ordStartFormatted} às ${ordEndFormatted}. É necessária uma janela de descanso de 5 horas antes e depois.`
+            message: `Intervalo de descanso insuficiente em relação ao plantão ordinário da equipe ${teamOnD} das ${ordStartFormatted} às ${ordEndFormatted}. É necessária uma janela de descanso de 5 horas antes e depois.`
           };
         }
       }
