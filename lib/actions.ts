@@ -412,6 +412,20 @@ export async function validateUserRestWindow(
     return { valid: true };
   }
 
+  // Validação da Data de Retorno do Afastamento
+  if (user.returnDate && user.returnDate.trim() !== "") {
+    const returnDateTime = toZonedTime(`${user.returnDate}T07:00:00`, timeZone);
+    const scheduleStart = new Date(startTimeStr);
+    
+    if (scheduleStart < returnDateTime) {
+      const returnDateFormatted = formatInTimeZone(returnDateTime, timeZone, "dd/MM/yyyy");
+      return {
+        valid: false,
+        message: `O policial está afastado e só poderá figurar em escalas e se voluntariar a partir da data de retorno definida: ${returnDateFormatted}.`
+      };
+    }
+  }
+
   // 1. Validar contra escala ordinária (plantão ordinário das 07:00 às 07:00)
   if (user.workTeam && user.workTeam !== "ADM" && user.workTeam !== "Afastado" && user.workTeam !== "Transferido" && user.workTeam !== "Externo") {
     const unitSettings = await db.settings.get(user.unitId);
@@ -426,6 +440,15 @@ export async function validateUserRestWindow(
       if (isUserOnDuty(user.workTeam, dateStrForCheck, dutyBaseline)) {
         // O plantão ordinário começa às 07:00 AM do dia d e termina às 07:00 AM do dia d+1
         const ordStart = toZonedTime(formatInTimeZone(d, timeZone, "yyyy-MM-dd'T'07:00:00"), timeZone);
+        
+        // Se for antes da data de retorno, ignoramos este plantão ordinário
+        if (user.returnDate && user.returnDate.trim() !== "") {
+          const returnDateTime = toZonedTime(`${user.returnDate}T07:00:00`, timeZone);
+          if (ordStart < returnDateTime) {
+            continue;
+          }
+        }
+
         const ordEnd = new Date(ordStart.getTime() + 24 * 60 * 60 * 1000);
 
         // Janela proibida com as 5 horas de descanso antes e depois:

@@ -219,7 +219,7 @@ function AdminDashboardContent() {
   };
 
   const filteredUsers = usersList
-    .filter(u => (unitId ? u.unitId === unitId : true) && u.workTeam !== 'Transferido' && u.workTeam !== 'Afastado' && (
+    .filter(u => (unitId ? u.unitId === unitId : true) && u.workTeam !== 'Transferido' && (
       u.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       u.nickname.toLowerCase().includes(searchQuery.toLowerCase()) ||
       u.taxId.includes(searchQuery) ||
@@ -295,6 +295,7 @@ function AdminDashboardContent() {
       serviceType: editingUser.serviceType,
       birthDate: editingUser.birthDate,
       absenceReason: editingUser.workTeam === 'Afastado' ? editingUser.absenceReason : "",
+      returnDate: (editingUser.workTeam !== 'Afastado' && editingUser.workTeam !== 'Transferido') ? (editingUser.returnDate || "") : "",
     };
 
     if (editingUser.password && editingUser.password.trim() !== "") {
@@ -1364,27 +1365,27 @@ function AdminDashboardContent() {
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {filteredUsers.map((u, index) => (
-                  <tr key={u.id} className="group hover:bg-gray-50/50 transition-colors">
+                  <tr key={u.id} className={`group transition-colors ${u.workTeam === 'Afastado' ? 'bg-red-50/10 hover:bg-red-50/20' : 'hover:bg-gray-50/50'}`}>
                     <td className="px-6 py-4 text-[10px] font-black text-gray-300">#{index + 1}</td>
                     <td className="px-6 py-4">
                       <div className="flex flex-col">
-                        <span className="text-sm font-black text-gray-900 leading-tight">{u.rank} {u.nickname}</span>
-                        <span className="text-[10px] text-gray-400 font-bold uppercase truncate max-w-[250px]">{u.fullName}</span>
+                        <span className={`text-sm font-black leading-tight ${u.workTeam === 'Afastado' ? 'text-red-600' : 'text-gray-900'}`}>{u.rank} {u.nickname}</span>
+                        <span className={`text-[10px] font-bold uppercase truncate max-w-[250px] ${u.workTeam === 'Afastado' ? 'text-red-400/80' : 'text-gray-400'}`}>{u.fullName}</span>
                       </div>
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex flex-col gap-0.5">
-                        <span className="text-xs font-bold text-gray-700">RG: {formatRG(u.rg)}</span>
-                        <span className="text-[10px] text-gray-400 font-medium">CPF: {formatCPF(u.taxId)}</span>
+                        <span className={`text-xs font-bold ${u.workTeam === 'Afastado' ? 'text-red-700/90' : 'text-gray-700'}`}>RG: {formatRG(u.rg)}</span>
+                        <span className={`text-[10px] font-medium ${u.workTeam === 'Afastado' ? 'text-red-500/80' : 'text-gray-400'}`}>CPF: {formatCPF(u.taxId)}</span>
                       </div>
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-tighter ${u.workTeam === 'ADM' ? 'bg-blue-100 text-blue-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-tighter ${u.workTeam === 'Afastado' ? 'bg-red-100 text-red-700' : u.workTeam === 'ADM' ? 'bg-blue-100 text-blue-700' : 'bg-emerald-100 text-emerald-700'}`}>
                           {u.workTeam || "—"}
                         </span>
-                        <span className="text-[10px] font-bold text-gray-400 uppercase">
-                          {u.jobFunction || "Operacional"}
+                        <span className={`text-[10px] font-bold uppercase ${u.workTeam === 'Afastado' ? 'text-red-500' : 'text-gray-400'}`}>
+                          {u.workTeam === 'Afastado' ? (u.absenceReason || "Afastado") : (u.jobFunction || "Operacional")}
                         </span>
                       </div>
                     </td>
@@ -2256,6 +2257,21 @@ function AdminDashboardContent() {
                 {TEAMS.map(t => <option key={t} value={t}>{t}</option>)}
               </select>
             </div>
+
+            {editingUser.workTeam !== "Afastado" && editingUser.workTeam !== "Transferido" && (
+              <div className="space-y-1 animate-in fade-in slide-in-from-top-2 duration-300">
+                <Label className="text-xs font-semibold text-gray-600">Data de Retorno do Afastamento (Opcional)</Label>
+                <Input
+                  type="date"
+                  className="w-full p-2.5 border rounded-lg text-sm focus-visible:ring-[#79A3B1]"
+                  value={editingUser.returnDate || ""}
+                  onChange={(e) => setEditingUser({ ...editingUser, returnDate: e.target.value })}
+                />
+                <span className="text-[10px] text-gray-400 block leading-tight">
+                  Se preenchida, o militar só figurará nas escalas e poderá se voluntariar a partir deste dia.
+                </span>
+              </div>
+            )}
 
             {editingUser.workTeam === "Afastado" && (
               <div className="space-y-1 animate-in fade-in slide-in-from-top-2 duration-300">

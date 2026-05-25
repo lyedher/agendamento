@@ -27,6 +27,9 @@ CREATE TABLE users (
     unit_id TEXT REFERENCES units(id),
     avatar_url TEXT,
     birth_date DATE,
+    absence_reason TEXT,
+    return_date DATE,
+    service_type TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 

@@ -27,6 +27,7 @@ export interface User {
   birthDate?: string; // Para aniversários e antiguidade
   serviceType?: 'OPER' | 'ADM' | 'ARI' | 'ALI' | 'APOIO';
   absenceReason?: string; // Motivo do afastamento (Férias, Licença, etc)
+  returnDate?: string; // Data de retorno do afastamento (YYYY-MM-DD)
   fichaData?: string;
 }
 
@@ -241,6 +242,8 @@ function mapUserToDb(user: Partial<User>) {
   if (user.photo !== undefined) mapped.avatar_url = user.photo;
   if (user.birthDate !== undefined) mapped.birth_date = user.birthDate;
   if (user.serviceType !== undefined) mapped.service_type = user.serviceType;
+  if (user.absenceReason !== undefined) mapped.absence_reason = user.absenceReason;
+  if (user.returnDate !== undefined) mapped.return_date = user.returnDate;
   if (user.fichaData !== undefined) mapped.ficha_data = user.fichaData;
   return mapped;
 }
@@ -265,6 +268,8 @@ function mapDbToUser(dbUser: any): User {
     photo: dbUser.avatar_url,
     birthDate: dbUser.birth_date,
     serviceType: dbUser.service_type,
+    absenceReason: dbUser.absence_reason,
+    returnDate: dbUser.return_date,
     fichaData: dbUser.ficha_data
   };
 }
@@ -526,6 +531,7 @@ export const db = {
     },
     async update(unitId: string, data: Partial<AppSettings>): Promise<AppSettings> {
       try {
+        if (!SUPABASE_URL) throw new Error("Supabase URL not configured");
         const res = await fetch(`${SUPABASE_URL}/rest/v1/settings?unitId=eq.${encodeURIComponent(unitId)}`, {
           method: 'PATCH',
           headers,
@@ -536,7 +542,9 @@ export const db = {
           const updated = await res.json();
           if (updated && updated[0]) return updated[0];
         }
-        
+        throw new Error("Supabase request failed or returned empty data");
+      } catch (error) {
+        console.warn("Using local settings fallback:", error);
         const settingsList = getLocalSettings();
         const index = settingsList.findIndex(s => s.unitId === unitId);
         
@@ -558,9 +566,6 @@ export const db = {
           saveLocalSettings(settingsList);
           return settingsList[index];
         }
-      } catch (error) {
-        console.error("Erro ao atualizar configurações:", error);
-        throw error;
       }
     }
   },

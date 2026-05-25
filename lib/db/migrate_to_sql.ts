@@ -25,7 +25,10 @@ function generateSql() {
     users.forEach((u: any) => {
         const role = u.role || 'user';
         const unitId = u.unitId ? `'${u.unitId}'` : 'NULL';
-        sql += `INSERT INTO users (id, full_name, nickname, rank, tax_id, rg, email, password_hash, phone, job_function, work_team, sort_order, role, unit_id) VALUES ('${u.id}', '${u.fullName.replace(/'/g, "''")}', '${u.nickname.replace(/'/g, "''")}', '${u.rank}', '${u.taxId}', '${u.rg}', '${u.email}', '${u.passwordHash}', '${u.phone || ''}', '${u.jobFunction || ''}', '${u.workTeam || ''}', ${u.sortOrder || 999}, '${role}', ${unitId}) ON CONFLICT (id) DO NOTHING;\n`;
+        const absenceReason = u.absenceReason ? `'${u.absenceReason.replace(/'/g, "''")}'` : 'NULL';
+        const returnDate = u.returnDate ? `'${u.returnDate}'` : 'NULL';
+        const serviceType = u.serviceType ? `'${u.serviceType}'` : 'NULL';
+        sql += `INSERT INTO users (id, full_name, nickname, rank, tax_id, rg, email, password_hash, phone, job_function, work_team, sort_order, role, unit_id, absence_reason, return_date, service_type) VALUES ('${u.id}', '${u.fullName.replace(/'/g, "''")}', '${u.nickname.replace(/'/g, "''")}', '${u.rank}', '${u.taxId}', '${u.rg}', '${u.email}', '${u.passwordHash}', '${u.phone || ''}', '${u.jobFunction || ''}', '${u.workTeam || ''}', ${u.sortOrder || 999}, '${role}', ${unitId}, ${absenceReason}, ${returnDate}, ${serviceType}) ON CONFLICT (id) DO NOTHING;\n`;
     });
     sql += '\n';
 
