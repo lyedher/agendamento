@@ -21,6 +21,14 @@ export default function AgendamentoPage() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' | 'info' } | null>(null);
+  const [expandedSchedules, setExpandedSchedules] = useState<Record<string, boolean>>({});
+
+  const toggleExpandSchedule = (scheduleId: string) => {
+    setExpandedSchedules(prev => ({
+      ...prev,
+      [scheduleId]: !prev[scheduleId]
+    }));
+  };
 
   useEffect(() => {
     loadData();
@@ -284,6 +292,12 @@ export default function AgendamentoPage() {
                 const start = new Date(s.startTime);
                 const end = new Date(s.endTime);
 
+                const isClosed = isFull || new Date(s.endTime) < new Date() || !isWindowOpen;
+                const hasVacancy = !isFull && (s.capacity - (s.userIds?.length || 0) >= 1);
+                const showVolunteersOption = hasVacancy && (s.userIds?.length || 0) > 0;
+                const showVolunteersDirectly = isClosed && (s.userIds?.length || 0) > 0;
+                const isExpanded = !!expandedSchedules[s.id];
+
                 return (
                   <Card key={s.id} className={`border-0 shadow-md overflow-hidden ${isVolunteered ? 'ring-2 ring-emerald-500' : ''}`}>
                     <div className="flex flex-col md:flex-row">
@@ -354,19 +368,59 @@ export default function AgendamentoPage() {
                             </Button>
                           )}
                           
-                          <div className="flex -space-x-2 ml-auto">
-                            {s.userIds?.slice(0, 5).map((uid: string, i: number) => (
-                              <div key={uid} className="w-8 h-8 rounded-full border-2 border-white bg-gray-200 flex items-center justify-center overflow-hidden" title="Policial Escalado">
-                                <Users size={14} className="text-gray-400" />
-                              </div>
-                            ))}
-                            {(s.userIds?.length || 0) > 5 && (
-                              <div className="w-8 h-8 rounded-full border-2 border-white bg-gray-100 flex items-center justify-center text-[10px] font-bold text-gray-500">
-                                +{(s.userIds?.length || 0) - 5}
-                              </div>
+                          <div className="flex items-center gap-3 ml-auto">
+                            {showVolunteersOption && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                type="button"
+                                className="text-xs text-[#79A3B1] hover:text-[#5c7f8c] font-black p-0 h-auto flex items-center gap-1 hover:bg-transparent"
+                                onClick={() => toggleExpandSchedule(s.id)}
+                              >
+                                <Users size={14} />
+                                {isExpanded ? "Ocultar Quem Já Pegou" : "Ver Quem Já Pegou"}
+                              </Button>
                             )}
+
+                            <div className="flex -space-x-2">
+                              {s.userIds?.slice(0, 5).map((uid: string) => {
+                                const u = usersList.find(usr => usr.id === uid);
+                                const nameTitle = u ? `${u.rank} ${u.nickname}` : "Policial Escalado";
+                                return (
+                                  <div key={uid} className="w-8 h-8 rounded-full border-2 border-white bg-gray-200 flex items-center justify-center overflow-hidden cursor-help" title={nameTitle}>
+                                    <Users size={14} className="text-gray-400" />
+                                  </div>
+                                );
+                              })}
+                              {(s.userIds?.length || 0) > 5 && (
+                                <div className="w-8 h-8 rounded-full border-2 border-white bg-gray-100 flex items-center justify-center text-[10px] font-bold text-gray-500">
+                                  +{(s.userIds?.length || 0) - 5}
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </div>
+
+                        {((showVolunteersOption && isExpanded) || showVolunteersDirectly) && (
+                          <div className="mt-4 p-3 bg-gray-50 border border-gray-100 rounded-xl animate-in fade-in duration-200">
+                            <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 flex items-center gap-1">
+                              <Users size={12} className="text-gray-400" />
+                              {isClosed ? "Militares Escalados (Escala Encerrada)" : "Quem já pegou esta escala"}
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              {s.userIds.map((uid: string) => {
+                                const u = usersList.find(usr => usr.id === uid);
+                                if (!u) return null;
+                                return (
+                                  <span key={u.id} className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white border border-gray-200 text-xs font-bold text-gray-700 rounded-lg shadow-sm">
+                                    <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
+                                    {u.rank} {u.nickname}
+                                  </span>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
                       </CardContent>
                     </div>
                   </Card>
