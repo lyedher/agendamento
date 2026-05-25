@@ -657,10 +657,19 @@ export const db = {
     async update(unitId: string, data: Partial<AppSettings>): Promise<AppSettings> {
       try {
         if (!SUPABASE_URL) throw new Error("Supabase URL not configured");
-        const res = await fetch(`${SUPABASE_URL}/rest/v1/settings?unit_id=eq.${encodeURIComponent(unitId)}`, {
-          method: 'PATCH',
-          headers,
-          body: JSON.stringify(mapSettingsToDb(data))
+        
+        const dbBody = {
+          ...mapSettingsToDb(data),
+          unit_id: unitId
+        };
+
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/settings`, {
+          method: 'POST',
+          headers: {
+            ...headers,
+            'Prefer': 'resolution=merge-duplicates,return=representation'
+          },
+          body: JSON.stringify(dbBody)
         });
         
         if (res.ok) {
