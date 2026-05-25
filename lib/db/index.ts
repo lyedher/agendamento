@@ -282,6 +282,57 @@ function mapDbToUser(dbUser: any): User {
   };
 }
 
+function mapDbToSettings(dbRow: any): AppSettings {
+  if (!dbRow) return dbRow;
+  return {
+    id: dbRow.unit_id || Math.random().toString(36).substring(7),
+    unitId: dbRow.unit_id,
+    ac4Rates: dbRow.ac4_rates ? (typeof dbRow.ac4_rates === 'string' ? JSON.parse(dbRow.ac4_rates) : dbRow.ac4_rates) : { blueDay: 26.47, blueNight: 29.8, redDay: 36.41, redNight: 41.38 },
+    maxMonthlySlots: dbRow.max_monthly_slots ?? 10,
+    openDateTime: dbRow.open_date_time || new Date().toISOString(),
+    closeDateTime: dbRow.close_date_time || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+    inviteCode: dbRow.invite_code || 'stiv'
+  };
+}
+
+function mapSettingsToDb(settings: Partial<AppSettings>): any {
+  if (!settings) return settings;
+  const dbRow: any = {};
+  if (settings.unitId !== undefined) dbRow.unit_id = settings.unitId;
+  if (settings.ac4Rates !== undefined) dbRow.ac4_rates = settings.ac4Rates;
+  if (settings.maxMonthlySlots !== undefined) dbRow.max_monthly_slots = settings.maxMonthlySlots;
+  if (settings.openDateTime !== undefined) dbRow.open_date_time = settings.openDateTime || null;
+  if (settings.closeDateTime !== undefined) dbRow.close_date_time = settings.closeDateTime || null;
+  if (settings.inviteCode !== undefined) dbRow.invite_code = settings.inviteCode;
+  return dbRow;
+}
+
+function mapDbToSchedule(dbRow: any): Schedule {
+  if (!dbRow) return dbRow;
+  return {
+    id: dbRow.id,
+    scheduleName: dbRow.schedule_name,
+    startTime: dbRow.start_time,
+    endTime: dbRow.end_time,
+    capacity: dbRow.capacity ?? 1,
+    unitId: dbRow.unit_id,
+    userIds: dbRow.user_ids || []
+  };
+}
+
+function mapScheduleToDb(schedule: Partial<Schedule>): any {
+  if (!schedule) return schedule;
+  const dbRow: any = {};
+  if (schedule.id !== undefined) dbRow.id = schedule.id;
+  if (schedule.scheduleName !== undefined) dbRow.schedule_name = schedule.scheduleName;
+  if (schedule.startTime !== undefined) dbRow.start_time = schedule.startTime;
+  if (schedule.endTime !== undefined) dbRow.end_time = schedule.endTime;
+  if (schedule.capacity !== undefined) dbRow.capacity = schedule.capacity;
+  if (schedule.unitId !== undefined) dbRow.unit_id = schedule.unitId;
+  if (schedule.userIds !== undefined) dbRow.user_ids = schedule.userIds;
+  return dbRow;
+}
+
 export const db = {
   users: {
     async create(user: Omit<User, 'id'>): Promise<User> {
@@ -387,16 +438,16 @@ export const db = {
   },
   schedules: {
     async create(schedule: Omit<Schedule, 'id' | 'userIds'>): Promise<Schedule> {
-      const newSchedule = { ...schedule, id: Math.random().toString(36).substring(7), userIds: [] };
+      const newSchedule = { ...schedule, id: Math.random().toString(36).substring(7), userIds: [] as string[] };
       try {
         const res = await fetch(`${SUPABASE_URL}/rest/v1/schedules`, {
           method: 'POST',
           headers,
-          body: JSON.stringify(newSchedule)
+          body: JSON.stringify(mapScheduleToDb(newSchedule))
         });
         if (!res.ok) throw new Error();
         const data = await res.json();
-        return data[0] || newSchedule;
+        return mapDbToSchedule(data[0]) || newSchedule;
       } catch {
         const schedules = getLocalSchedules();
         schedules.push(newSchedule);
@@ -410,7 +461,8 @@ export const db = {
           headers
         });
         if (!res.ok) throw new Error();
-        return await res.json();
+        const data = await res.json();
+        return data.map(mapDbToSchedule);
       } catch {
         return getLocalSchedules();
       }
@@ -420,11 +472,11 @@ export const db = {
         const res = await fetch(`${SUPABASE_URL}/rest/v1/schedules?id=eq.${encodeURIComponent(id)}`, {
           method: 'PATCH',
           headers,
-          body: JSON.stringify(data)
+          body: JSON.stringify(mapScheduleToDb(data))
         });
         if (!res.ok) throw new Error();
         const updated = await res.json();
-        return updated[0];
+        return mapDbToSchedule(updated[0]);
       } catch {
         const schedules = getLocalSchedules();
         const index = schedules.findIndex(s => s.id === id);
@@ -512,13 +564,13 @@ export const db = {
   settings: {
     async get(unitId: string = '39bpm'): Promise<AppSettings> {
       try {
-        const res = await fetch(`${SUPABASE_URL}/rest/v1/settings?unitId=eq.${encodeURIComponent(unitId)}`, {
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/settings?unit_id=eq.${encodeURIComponent(unitId)}`, {
           headers
         });
         if (!res.ok) throw new Error();
         const data = await res.json();
         if (data.length === 0) throw new Error();
-        return data[0];
+        return mapDbToSettings(data[0]);
       } catch {
         const settingsList = getLocalSettings();
         const unitSettings = settingsList.find(s => s.unitId === unitId);
@@ -540,15 +592,15 @@ export const db = {
     async update(unitId: string, data: Partial<AppSettings>): Promise<AppSettings> {
       try {
         if (!SUPABASE_URL) throw new Error("Supabase URL not configured");
-        const res = await fetch(`${SUPABASE_URL}/rest/v1/settings?unitId=eq.${encodeURIComponent(unitId)}`, {
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/settings?unit_id=eq.${encodeURIComponent(unitId)}`, {
           method: 'PATCH',
           headers,
-          body: JSON.stringify(data)
+          body: JSON.stringify(mapSettingsToDb(data))
         });
         
         if (res.ok) {
           const updated = await res.json();
-          if (updated && updated[0]) return updated[0];
+          if (updated && updated[0]) return mapDbToSettings(updated[0]);
         }
         throw new Error("Supabase request failed or returned empty data");
       } catch (error) {
