@@ -163,6 +163,12 @@ function AdminDashboardContent() {
     loadData();
   }, []);
 
+  useEffect(() => {
+    setCreationMonth(currentMonth);
+    setCreationYear(currentYear);
+    setSelectedDays([]);
+  }, [currentMonth, currentYear]);
+
   const loadData = async () => {
     setIsLoading(true);
     const [uRes, sRes, setRes, unitsRes] = await Promise.all([
@@ -1098,9 +1104,9 @@ function AdminDashboardContent() {
               </div>
               <div className="lg:col-span-2 space-y-6">
         <Card className="border-0 shadow-xl bg-white rounded-2xl lg:col-span-2 overflow-hidden">
-          <CardHeader className="flex flex-row items-center justify-between p-6 border-b bg-gray-50/30">
-            <div className="space-y-1">
-              <div className="flex items-center gap-3">
+          <CardHeader className="flex flex-col md:flex-row items-center justify-between p-6 border-b bg-gray-50/30 gap-4">
+            <div className="space-y-1 w-full md:w-auto">
+              <div className="flex flex-wrap items-center gap-3">
                 <CardTitle className="text-[#79A3B1] text-xl font-black" style={{ fontFamily: 'Space Grotesk, sans-serif' }}>Gestão de Escalas SER</CardTitle>
                 {selectedFilterDay !== null && (
                   <div className="flex items-center gap-1 px-2 py-0.5 bg-[#79A3B1] text-white text-[10px] font-bold rounded-full animate-in zoom-in-95">
@@ -1111,12 +1117,53 @@ function AdminDashboardContent() {
               </div>
               <CardDescription className="text-xs">Gerencie vagas e inscrições dos voluntários.</CardDescription>
             </div>
-            <Button
-              className="bg-white text-gray-700 hover:bg-gray-50 border shadow-sm print:hidden h-9"
-              size="sm" onClick={() => window.print()}
-            >
-              <Printer className="mr-2 h-4 w-4" /> Imprimir
-            </Button>
+
+            <div className="flex flex-wrap items-center gap-3 w-full md:w-auto justify-end print:hidden">
+              <div className="flex items-center gap-2 bg-white p-1 rounded-xl shadow-sm border border-gray-100">
+                <Button
+                  variant="ghost" size="sm" className="h-8 px-3 hover:bg-[#79A3B1]/10 text-[#79A3B1] font-bold text-[10px] uppercase tracking-wider"
+                  type="button"
+                  onClick={() => {
+                    if (currentMonth === 0) {
+                      setCurrentMonth(11);
+                      setCurrentYear(prev => prev - 1);
+                    } else {
+                      setCurrentMonth(prev => prev - 1);
+                    }
+                  }}
+                >
+                  Anterior
+                </Button>
+                <div className="text-center px-2 min-w-[100px]">
+                  <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest leading-none mb-0.5">Referência</p>
+                  <p className="text-xs font-black text-gray-700 leading-none capitalize">
+                    {new Date(currentYear, currentMonth).toLocaleString('pt-BR', { month: 'short', year: 'numeric' })}
+                  </p>
+                </div>
+                <Button
+                  variant="ghost" size="sm" className="h-8 px-3 hover:bg-[#79A3B1]/10 text-[#79A3B1] font-bold text-[10px] uppercase tracking-wider"
+                  type="button"
+                  onClick={() => {
+                    if (currentMonth === 11) {
+                      setCurrentMonth(0);
+                      setCurrentYear(prev => prev + 1);
+                    } else {
+                      setCurrentMonth(prev => prev + 1);
+                    }
+                  }}
+                >
+                  Próximo
+                </Button>
+              </div>
+
+              <Button
+                className="bg-white text-gray-700 hover:bg-gray-50 border shadow-sm h-9 px-3 text-xs font-bold"
+                type="button"
+                size="sm" onClick={() => window.print()}
+              >
+                <Printer className="mr-1.5 h-3.5 w-3.5" /> Imprimir
+              </Button>
+            </div>
           </CardHeader>
           <CardContent className="p-0">
             {isLoading ? (
@@ -1765,24 +1812,62 @@ function AdminDashboardContent() {
   {/* Tab 5: Agendamentos (Resumo Financeiro AC-4) */ }
   <TabsContent value="volunteers" className="animate-in fade-in duration-300 space-y-6">
     <Card className="border-0 shadow-xl bg-white rounded-2xl overflow-hidden">
-      <CardHeader className="bg-emerald-50 border-b p-6 flex flex-row items-center justify-between">
-        <div className="space-y-1">
+      <CardHeader className="bg-emerald-50/50 border-b p-6 flex flex-col md:flex-row items-center justify-between gap-4">
+        <div className="space-y-1 w-full md:w-auto">
           <CardTitle className="text-emerald-700 text-2xl font-black uppercase tracking-tight" style={{ fontFamily: 'Space Grotesk, sans-serif' }}>
             RESUMO DE AGENDAMENTOS (AC-4)
           </CardTitle>
           <CardDescription className="text-emerald-600/70 font-medium">Controle financeiro e de carga horária extra por militar.</CardDescription>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="text-right mr-4 hidden md:block">
-            <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest leading-none mb-1">Mês de Referência</p>
-            <p className="text-sm font-black text-emerald-800 leading-none">{new Date(currentYear, currentMonth).toLocaleString('pt-BR', { month: 'long', year: 'numeric' })}</p>
+        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto justify-end print:hidden">
+          <div className="flex items-center gap-2 bg-white p-1 rounded-xl shadow-sm border border-emerald-100">
+            <Button
+              variant="ghost" size="sm" className="h-8 px-3 hover:bg-emerald-50 text-emerald-700 font-bold text-[10px] uppercase tracking-wider"
+              type="button"
+              onClick={() => {
+                if (currentMonth === 0) {
+                  setCurrentMonth(11);
+                  setCurrentYear(prev => prev - 1);
+                } else {
+                  setCurrentMonth(prev => prev - 1);
+                }
+              }}
+            >
+              Anterior
+            </Button>
+            <div className="text-center px-2 min-w-[110px]">
+              <p className="text-[9px] font-bold text-emerald-500 uppercase tracking-widest leading-none mb-0.5">Referência</p>
+              <p className="text-xs font-black text-emerald-800 leading-none capitalize">
+                {new Date(currentYear, currentMonth).toLocaleString('pt-BR', { month: 'long', year: 'numeric' })}
+              </p>
+            </div>
+            <Button
+              variant="ghost" size="sm" className="h-8 px-3 hover:bg-emerald-50 text-emerald-700 font-bold text-[10px] uppercase tracking-wider"
+              type="button"
+              onClick={() => {
+                if (currentMonth === 11) {
+                  setCurrentMonth(0);
+                  setCurrentYear(prev => prev + 1);
+                } else {
+                  setCurrentMonth(prev => prev + 1);
+                }
+              }}
+            >
+              Próximo
+            </Button>
           </div>
+
           <Button
             className="bg-emerald-600 text-white hover:bg-emerald-700 shadow-lg shadow-emerald-600/20 font-bold uppercase tracking-widest text-xs h-10 print:hidden"
+            type="button"
             onClick={() => window.print()}
           >
             <Printer className="mr-2 h-4 w-4" /> Relatório
           </Button>
+        </div>
+        <div className="hidden print:block text-right">
+          <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest leading-none mb-1">Mês de Referência</p>
+          <p className="text-sm font-black text-emerald-800 leading-none">{new Date(currentYear, currentMonth).toLocaleString('pt-BR', { month: 'long', year: 'numeric' })}</p>
         </div>
       </CardHeader>
       <CardContent className="p-0">
