@@ -81,6 +81,16 @@ export interface AuditLog {
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_KEY;
 
+console.log("=== SUPABASE CONFIGURATION DIAGNOSTICS ===");
+console.log("SUPABASE_URL presente:", !!SUPABASE_URL);
+if (SUPABASE_URL) {
+  console.log("SUPABASE_URL:", SUPABASE_URL.substring(0, 15) + "...");
+} else {
+  console.warn("ALERTA: SUPABASE_URL não encontrada no process.env!");
+}
+console.log("SUPABASE_KEY presente:", !!SUPABASE_KEY);
+console.log("==========================================");
+
 const isVercel = process.env.VERCEL === '1' || process.env.NOW_BUILDER === '1';
 const BASE_DIR = isVercel ? '/tmp' : path.join(process.cwd(), 'lib', 'db');
 
@@ -469,7 +479,11 @@ export const db = {
           headers,
           body: JSON.stringify(mapScheduleToDb(newSchedule))
         });
-        if (!res.ok) throw new Error();
+        if (!res.ok) {
+          const errBody = await res.text().catch(() => "Sem corpo de erro");
+          console.error(`Erro ao criar escala no Supabase. Status: ${res.status}. Resposta:`, errBody);
+          throw new Error(`Supabase error status ${res.status}`);
+        }
         const data = await res.json();
         try {
           const schedules = getLocalSchedules();
@@ -479,7 +493,8 @@ export const db = {
           console.warn("Failed to sync local schedules on create:", e);
         }
         return mapDbToSchedule(data[0]) || newSchedule;
-      } catch {
+      } catch (err: any) {
+        console.error("ERRO CRÍTICO no Supabase (schedules.create). Caindo no fallback local JSON! Detalhes:", err);
         const schedules = getLocalSchedules();
         schedules.push(newSchedule);
         saveLocalSchedules(schedules);
@@ -672,23 +687,27 @@ export const db = {
           body: JSON.stringify(dbBody)
         });
         
-        if (res.ok) {
-          const updated = await res.json();
-          try {
-            const settingsList = getLocalSettings();
-            const index = settingsList.findIndex(s => s.unitId === unitId);
-            if (index !== -1) {
-              settingsList[index] = { ...settingsList[index], ...data };
-              saveLocalSettings(settingsList);
-            }
-          } catch (e) {
-            console.warn("Failed to sync local settings on update:", e);
-          }
-          if (updated && updated[0]) return mapDbToSettings(updated[0]);
+        if (!res.ok) {
+          const errBody = await res.text().catch(() => "Sem corpo de erro");
+          console.error(`Erro ao salvar configurações no Supabase. Status: ${res.status}. Resposta:`, errBody);
+          throw new Error(`Supabase error status ${res.status}`);
         }
+        
+        const updated = await res.json();
+        try {
+          const settingsList = getLocalSettings();
+          const index = settingsList.findIndex(s => s.unitId === unitId);
+          if (index !== -1) {
+            settingsList[index] = { ...settingsList[index], ...data };
+            saveLocalSettings(settingsList);
+          }
+        } catch (e) {
+          console.warn("Failed to sync local settings on update:", e);
+        }
+        if (updated && updated[0]) return mapDbToSettings(updated[0]);
         throw new Error("Supabase request failed or returned empty data");
-      } catch (error) {
-        console.warn("Using local settings fallback:", error);
+      } catch (error: any) {
+        console.error("ERRO CRÍTICO no Supabase (settings.update). Caindo no fallback local JSON! Detalhes:", error);
         const settingsList = getLocalSettings();
         const index = settingsList.findIndex(s => s.unitId === unitId);
         
