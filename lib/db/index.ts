@@ -27,7 +27,9 @@ export interface User {
   birthDate?: string; // Para aniversários e antiguidade
   serviceType?: 'OPER' | 'ADM' | 'ARI' | 'ALI' | 'APOIO';
   absenceReason?: string; // Motivo do afastamento (Férias, Licença, etc)
+  absenceStartDate?: string; // Data de início do afastamento (YYYY-MM-DD)
   returnDate?: string; // Data de retorno do afastamento (YYYY-MM-DD)
+  transferDate?: string; // Data da transferência (YYYY-MM-DD)
   fichaData?: string;
 }
 
@@ -243,7 +245,9 @@ function mapUserToDb(user: Partial<User>) {
   if (user.birthDate !== undefined) mapped.birth_date = user.birthDate;
   if (user.serviceType !== undefined) mapped.service_type = user.serviceType;
   if (user.absenceReason !== undefined) mapped.absence_reason = user.absenceReason;
+  if (user.absenceStartDate !== undefined) mapped.absence_start_date = user.absenceStartDate;
   if (user.returnDate !== undefined) mapped.return_date = user.returnDate;
+  if (user.transferDate !== undefined) mapped.transfer_date = user.transferDate;
   if (user.fichaData !== undefined) mapped.ficha_data = user.fichaData;
   return mapped;
 }
@@ -269,7 +273,9 @@ function mapDbToUser(dbUser: any): User {
     birthDate: dbUser.birth_date,
     serviceType: dbUser.service_type,
     absenceReason: dbUser.absence_reason,
+    absenceStartDate: dbUser.absence_start_date,
     returnDate: dbUser.return_date,
+    transferDate: dbUser.transfer_date,
     fichaData: dbUser.ficha_data
   };
 }

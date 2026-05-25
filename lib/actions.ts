@@ -412,22 +412,67 @@ export async function validateUserRestWindow(
     return { valid: true };
   }
 
-  // Validação da Data de Retorno do Afastamento
-  if (user.returnDate && user.returnDate.trim() !== "") {
-    const returnDateTime = toZonedTime(`${user.returnDate}T07:00:00`, timeZone);
-    const scheduleStart = new Date(startTimeStr);
-    
-    if (scheduleStart < returnDateTime) {
-      const returnDateFormatted = formatInTimeZone(returnDateTime, timeZone, "dd/MM/yyyy");
+  // 1. Determinar o status do policial na data da escala extra
+  const scheduleDateStr = formatInTimeZone(extraStart, timeZone, "yyyy-MM-dd");
+  
+  // A. Verificar Transferência
+  if (user.workTeam === 'Transferido') {
+    if (user.transferDate && user.transferDate.trim() !== "") {
+      if (scheduleDateStr >= user.transferDate) {
+        return {
+          valid: false,
+          message: `O policial foi transferido em ${formatInTimeZone(toZonedTime(`${user.transferDate}T12:00:00`, timeZone), timeZone, 'dd/MM/yyyy')} e não pode concorrer a escalas a partir desta data.`
+        };
+      }
+    } else {
       return {
         valid: false,
-        message: `O policial está afastado e só poderá figurar em escalas e se voluntariar a partir da data de retorno definida: ${returnDateFormatted}.`
+        message: "O policial está transferido e não pode concorrer a escalas."
       };
     }
   }
 
-  // 1. Validar contra escala ordinária (plantão ordinário das 07:00 às 07:00)
-  if (user.workTeam && user.workTeam !== "ADM" && user.workTeam !== "Afastado" && user.workTeam !== "Transferido" && user.workTeam !== "Externo") {
+  // B. Verificar Afastamento
+  let isCurrentlyAway = false;
+  let absenceReasonStr = "";
+  
+  if (user.workTeam === 'Afastado') {
+    if (user.absenceStartDate && user.absenceStartDate.trim() !== "") {
+      const hasReturn = user.returnDate && user.returnDate.trim() !== "";
+      const isAfterStart = scheduleDateStr >= user.absenceStartDate;
+      const isBeforeReturn = hasReturn ? (scheduleDateStr < user.returnDate!) : true;
+      
+      if (isAfterStart && isBeforeReturn) {
+        isCurrentlyAway = true;
+        absenceReasonStr = user.absenceReason || "Afastado";
+      }
+    } else {
+      // Sem data de início, considera afastado por tempo indeterminado
+      isCurrentlyAway = true;
+      absenceReasonStr = user.absenceReason || "Afastado";
+    }
+  }
+
+  // Se o policial está afastado nesta data:
+  if (isCurrentlyAway) {
+    // EXCEÇÃO: Se for "Lic. Especial", ele PODE tirar escala extra e está isento de escala ordinária
+    if (absenceReasonStr === "Lic. Especial") {
+      // Pode tirar escala extra! Mas vamos validar a janela entre duas escalas extras (abaixo).
+    } else {
+      const startStr = user.absenceStartDate ? formatInTimeZone(toZonedTime(`${user.absenceStartDate}T12:00:00`, timeZone), timeZone, 'dd/MM/yyyy') : "";
+      const returnStr = user.returnDate ? formatInTimeZone(toZonedTime(`${user.returnDate}T12:00:00`, timeZone), timeZone, 'dd/MM/yyyy') : "tempo indeterminado";
+      return {
+        valid: false,
+        message: `O policial está afastado (${absenceReasonStr}) no período de ${startStr} a ${returnStr} e não pode concorrer a esta escala.`
+      };
+    }
+  }
+
+  // 2. Validar contra escala ordinária (plantão ordinário das 07:00 às 07:00)
+  // Só validamos escala ordinária se ele NÃO estiver de Licença Especial (pois licença especial isenta o ordinário)
+  const isLicencaEspecial = isCurrentlyAway && absenceReasonStr === "Lic. Especial";
+  
+  if (!isLicencaEspecial && user.workTeam && user.workTeam !== "ADM" && user.workTeam !== "Afastado" && user.workTeam !== "Transferido" && user.workTeam !== "Externo") {
     const unitSettings = await db.settings.get(user.unitId);
     const dutyBaseline = unitSettings?.dutyBaseline;
 
@@ -437,18 +482,41 @@ export async function validateUserRestWindow(
 
     for (let d = new Date(startDay); d <= endDay; d.setDate(d.getDate() + 1)) {
       const dateStrForCheck = formatInTimeZone(d, timeZone, "yyyy-MM-dd'T'12:00:00");
+      const checkDayStr = formatInTimeZone(d, timeZone, "yyyy-MM-dd");
+
+      // Ignora plantão ordinário se nesta data d o policial estava afastado ou já havia sido transferido!
+      let wasAwayOnD = false;
+      if (user.workTeam === 'Afastado') {
+        if (user.absenceStartDate && user.absenceStartDate.trim() !== "") {
+          const hasReturn = user.returnDate && user.returnDate.trim() !== "";
+          const isAfterStart = checkDayStr >= user.absenceStartDate;
+          const isBeforeReturn = hasReturn ? (checkDayStr < user.returnDate!) : true;
+          if (isAfterStart && isBeforeReturn) {
+            wasAwayOnD = true;
+          }
+        } else {
+          wasAwayOnD = true;
+        }
+      }
+      
+      let wasTransferredOnD = false;
+      if (user.workTeam === 'Transferido') {
+        if (user.transferDate && user.transferDate.trim() !== "") {
+          if (checkDayStr >= user.transferDate) {
+            wasTransferredOnD = true;
+          }
+        } else {
+          wasTransferredOnD = true;
+        }
+      }
+
+      if (wasAwayOnD || wasTransferredOnD) {
+        continue; // Ignora o plantão ordinário
+      }
+
       if (isUserOnDuty(user.workTeam, dateStrForCheck, dutyBaseline)) {
         // O plantão ordinário começa às 07:00 AM do dia d e termina às 07:00 AM do dia d+1
         const ordStart = toZonedTime(formatInTimeZone(d, timeZone, "yyyy-MM-dd'T'07:00:00"), timeZone);
-        
-        // Se for antes da data de retorno, ignoramos este plantão ordinário
-        if (user.returnDate && user.returnDate.trim() !== "") {
-          const returnDateTime = toZonedTime(`${user.returnDate}T07:00:00`, timeZone);
-          if (ordStart < returnDateTime) {
-            continue;
-          }
-        }
-
         const ordEnd = new Date(ordStart.getTime() + 24 * 60 * 60 * 1000);
 
         // Janela proibida com as 5 horas de descanso antes e depois:

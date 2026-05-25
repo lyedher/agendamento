@@ -295,7 +295,9 @@ function AdminDashboardContent() {
       serviceType: editingUser.serviceType,
       birthDate: editingUser.birthDate,
       absenceReason: editingUser.workTeam === 'Afastado' ? editingUser.absenceReason : "",
-      returnDate: (editingUser.workTeam !== 'Afastado' && editingUser.workTeam !== 'Transferido') ? (editingUser.returnDate || "") : "",
+      absenceStartDate: editingUser.workTeam === 'Afastado' ? (editingUser.absenceStartDate || "") : "",
+      returnDate: editingUser.workTeam === 'Transferido' ? "" : (editingUser.returnDate || ""),
+      transferDate: editingUser.workTeam === 'Transferido' ? (editingUser.transferDate || "") : "",
     };
 
     if (editingUser.password && editingUser.password.trim() !== "") {
@@ -2274,16 +2276,57 @@ function AdminDashboardContent() {
             )}
 
             {editingUser.workTeam === "Afastado" && (
-              <div className="space-y-1 animate-in fade-in slide-in-from-top-2 duration-300">
-                <Label className="text-xs font-semibold text-orange-600">Motivo do Afastamento</Label>
-                <select
-                  className="w-full p-2.5 border border-orange-200 rounded-lg text-sm bg-orange-50 focus:ring-2 focus:ring-orange-500 outline-none transition-all font-bold text-orange-800"
-                  value={editingUser.absenceReason || ""}
-                  onChange={(e) => setEditingUser({ ...editingUser, absenceReason: e.target.value })}
-                >
-                  <option value="">Selecione o motivo...</option>
-                  {ABSENCE_REASONS.map(r => <option key={r} value={r}>{r}</option>)}
-                </select>
+              <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-300 bg-orange-50/50 p-3 rounded-xl border border-orange-100">
+                <div className="space-y-1">
+                  <Label className="text-xs font-semibold text-orange-600">Motivo do Afastamento</Label>
+                  <select
+                    className="w-full p-2.5 border border-orange-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-orange-500 outline-none transition-all font-bold text-orange-800"
+                    value={editingUser.absenceReason || ""}
+                    onChange={(e) => setEditingUser({ ...editingUser, absenceReason: e.target.value })}
+                  >
+                    <option value="">Selecione o motivo...</option>
+                    {ABSENCE_REASONS.map(r => <option key={r} value={r}>{r}</option>)}
+                  </select>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold text-orange-600">Data de Início</Label>
+                    <Input
+                      type="date"
+                      className="p-2 bg-white border border-orange-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 outline-none"
+                      value={editingUser.absenceStartDate || ""}
+                      onChange={(e) => setEditingUser({ ...editingUser, absenceStartDate: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold text-orange-600">Data de Retorno</Label>
+                    <Input
+                      type="date"
+                      className="p-2 bg-white border border-orange-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 outline-none"
+                      value={editingUser.returnDate || ""}
+                      onChange={(e) => setEditingUser({ ...editingUser, returnDate: e.target.value })}
+                    />
+                  </div>
+                </div>
+                <span className="text-[9px] text-orange-500/80 block leading-tight font-medium">
+                  Define o intervalo em que o militar está impedido de concorrer a escalas (exceto Lic. Especial).
+                </span>
+              </div>
+            )}
+
+            {editingUser.workTeam === "Transferido" && (
+              <div className="space-y-1 animate-in fade-in slide-in-from-top-2 duration-300 bg-gray-50/50 p-3 rounded-xl border border-gray-200/50">
+                <Label className="text-xs font-semibold text-gray-600">Data da Transferência</Label>
+                <Input
+                  type="date"
+                  className="w-full p-2.5 border rounded-lg text-sm focus-visible:ring-[#79A3B1]"
+                  value={editingUser.transferDate || ""}
+                  onChange={(e) => setEditingUser({ ...editingUser, transferDate: e.target.value })}
+                />
+                <span className="text-[9px] text-gray-400 block leading-tight font-medium mt-1">
+                  O militar deixará de concorrer a novas escalas desta unidade a partir desta data, mantendo histórico retroativo.
+                </span>
               </div>
             )}
 

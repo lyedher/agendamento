@@ -28,7 +28,9 @@ CREATE TABLE users (
     avatar_url TEXT,
     birth_date DATE,
     absence_reason TEXT,
+    absence_start_date DATE,
     return_date DATE,
+    transfer_date DATE,
     service_type TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
