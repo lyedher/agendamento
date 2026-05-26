@@ -1,9 +1,9 @@
 "use client";
-
+ 
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Calendar, ClipboardList, Clock, UserCheck, Calculator, ChevronLeft, ChevronRight, UserPlus, CheckCircle2, AlertCircle, Users, Lock } from "lucide-react";
-import { getUsers, getSchedules, volunteerToSchedule, unvolunteerFromSchedule, getSettings } from "@/lib/actions";
+import { getUsers, getSchedules, volunteerToSchedule, unvolunteerFromSchedule, getSettings, getCurrentUser } from "@/lib/actions";
 import { 
   Select, 
   SelectContent, 
@@ -12,7 +12,7 @@ import {
   SelectValue 
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-
+ 
 export default function AgendamentoPage() {
   const [usersList, setUsersList] = useState<any[]>([]);
   const [schedulesList, setSchedulesList] = useState<any[]>([]);
@@ -22,44 +22,46 @@ export default function AgendamentoPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' | 'info' } | null>(null);
   const [expandedSchedules, setExpandedSchedules] = useState<Record<string, boolean>>({});
-
+  const [currentUser, setCurrentUser] = useState<any>(null);
+ 
   const toggleExpandSchedule = (scheduleId: string) => {
     setExpandedSchedules(prev => ({
       ...prev,
       [scheduleId]: !prev[scheduleId]
     }));
   };
-
+ 
   useEffect(() => {
     loadData();
   }, []);
-
+ 
   async function loadData() {
-    const [resU, resS, resSet] = await Promise.all([getUsers(), getSchedules(), getSettings()]);
+    const [resU, resS, resSet, resMe] = await Promise.all([getUsers(), getSchedules(), getSettings(), getCurrentUser()]);
     if (resU.success) setUsersList(resU.users);
     if (resS.success) setSchedulesList(resS.schedules);
     if (resSet.success) setSettings(resSet.settings);
+    if (resMe.success) setCurrentUser(resMe.user);
   }
-
-  const currentUser = usersList.find(u => u.email === 'stivnil@hotmail.com') || usersList[0] || { id: "" };
-
+ 
+  const activeUser = currentUser || { id: "" };
+ 
   const currentYear = currentMonth.getFullYear();
-
+ 
   const userMonthlyQuotaCount = schedulesList.filter(s => 
-    s.userIds?.includes(currentUser.id) &&
+    s.userIds?.includes(activeUser.id) &&
     new Date(s.startTime).getMonth() === currentMonth.getMonth() &&
     new Date(s.startTime).getFullYear() === currentYear
   ).length;
-
+ 
   const isWindowOpen = settings ? (
     new Date() >= new Date(settings.openDateTime) && 
     new Date() <= new Date(settings.closeDateTime)
   ) : true;
-
+ 
   const handleVolunteer = async (scheduleId: string) => {
     setIsLoading(true);
     setMessage(null);
-    const res = await volunteerToSchedule(scheduleId, currentUser.id);
+    const res = await volunteerToSchedule(scheduleId, activeUser.id);
     if (res.success) {
       setMessage({ text: "Inscrição realizada com sucesso!", type: 'success' });
       await loadData();
@@ -68,11 +70,11 @@ export default function AgendamentoPage() {
     }
     setIsLoading(false);
   };
-
+ 
   const handleUnvolunteer = async (scheduleId: string) => {
     setIsLoading(true);
     setMessage(null);
-    const res = await unvolunteerFromSchedule(scheduleId, currentUser.id);
+    const res = await unvolunteerFromSchedule(scheduleId, activeUser.id);
     if (res.success) {
       setMessage({ text: "Inscrição cancelada.", type: 'success' });
       await loadData();
@@ -287,7 +289,7 @@ export default function AgendamentoPage() {
           {schedulesForSelectedDate.length > 0 ? (
             <div className="grid gap-4">
               {schedulesForSelectedDate.map((s) => {
-                const isVolunteered = s.userIds?.includes(currentUser.id);
+                const isVolunteered = s.userIds?.includes(activeUser.id);
                 const isFull = (s.userIds?.length || 0) >= s.capacity;
                 const start = new Date(s.startTime);
                 const end = new Date(s.endTime);
