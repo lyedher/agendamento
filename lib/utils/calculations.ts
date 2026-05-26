@@ -104,7 +104,14 @@ export const getUserTeamOnDate = (user: any, dateStr: string): string => {
     try {
       const history = JSON.parse(user.teamHistory);
       if (Array.isArray(history) && history.length > 0) {
-        for (const entry of history) {
+        // Ordena decrescente por startDate para priorizar o registro ativo mais recente
+        const sortedHistory = [...history].sort((a: any, b: any) => {
+          const dateA = a.startDate || "";
+          const dateB = b.startDate || "";
+          return dateB.localeCompare(dateA);
+        });
+
+        for (const entry of sortedHistory) {
           const start = entry.startDate || "";
           const end = entry.endDate || "";
           const afterStart = start === "" || dateStr >= start;
@@ -119,4 +126,33 @@ export const getUserTeamOnDate = (user: any, dateStr: string): string => {
     }
   }
   return user.workTeam || "";
+};
+
+export const getUserJobFunctionOnDate = (user: any, dateStr: string): string => {
+  if (user.teamHistory && user.teamHistory.trim() !== "") {
+    try {
+      const history = JSON.parse(user.teamHistory);
+      if (Array.isArray(history) && history.length > 0) {
+        // Ordena decrescente por startDate para priorizar o registro ativo mais recente
+        const sortedHistory = [...history].sort((a: any, b: any) => {
+          const dateA = a.startDate || "";
+          const dateB = b.startDate || "";
+          return dateB.localeCompare(dateA);
+        });
+
+        for (const entry of sortedHistory) {
+          const start = entry.startDate || "";
+          const end = entry.endDate || "";
+          const afterStart = start === "" || dateStr >= start;
+          const beforeEnd = end === "" || dateStr <= end;
+          if (afterStart && beforeEnd) {
+            return entry.jobFunction || user.jobFunction || "";
+          }
+        }
+      }
+    } catch (e) {
+      console.error("Erro ao analisar teamHistory para função do militar", user.id, e);
+    }
+  }
+  return user.jobFunction || "";
 };
