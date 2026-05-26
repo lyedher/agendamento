@@ -565,5 +565,212 @@
       "adm39bpm",
       "xz6o12"
     ]
+  },
+  {
+    "scheduleName": "Recobrimento 12:00 as 00:00",
+    "startTime": "2026-06-30T15:00:00.000Z",
+    "endTime": "2026-07-01T02:59:00.000Z",
+    "capacity": 2,
+    "unitId": "39bpm",
+    "id": "or17l",
+    "userIds": []
+  },
+  {
+    "scheduleName": "DETRAN 13:00 a 01:00",
+    "startTime": "2026-06-02T16:00:00.000Z",
+    "endTime": "2026-06-03T04:00:00.000Z",
+    "capacity": 2,
+    "unitId": "39bpm",
+    "id": "yqcflg",
+    "userIds": []
+  },
+  {
+    "scheduleName": "DETRAN 13:00 a 01:00",
+    "startTime": "2026-06-03T16:00:00.000Z",
+    "endTime": "2026-06-04T04:00:00.000Z",
+    "capacity": 2,
+    "unitId": "39bpm",
+    "id": "f11aka",
+    "userIds": []
+  },
+  {
+    "scheduleName": "DETRAN 13:00 a 01:00",
+    "startTime": "2026-06-04T16:00:00.000Z",
+    "endTime": "2026-06-05T04:00:00.000Z",
+    "capacity": 2,
+    "unitId": "39bpm",
+    "id": "7n1wt",
+    "userIds": []
+  },
+  {
+    "scheduleName": "DETRAN 13:00 a 01:00",
+    "startTime": "2026-06-09T16:00:00.000Z",
+    "endTime": "2026-06-10T04:00:00.000Z",
+    "capacity": 2,
+    "unitId": "39bpm",
+    "id": "98sjsq",
+    "userIds": []
+  },
+  {
+    "scheduleName": "DETRAN 13:00 a 01:00",
+    "startTime": "2026-06-10T16:00:00.000Z",
+    "endTime": "2026-06-11T04:00:00.000Z",
+    "capacity": 2,
+    "unitId": "39bpm",
+    "id": "36zksg",
+    "userIds": []
+  },
+  {
+    "scheduleName": "DETRAN 13:00 a 01:00",
+    "startTime": "2026-06-11T16:00:00.000Z",
+    "endTime": "2026-06-12T04:00:00.000Z",
+    "capacity": 2,
+    "unitId": "39bpm",
+    "id": "4vtoui",
+    "userIds": []
+  },
+  {
+    "scheduleName": "DETRAN 13:00 a 01:00",
+    "startTime": "2026-06-16T16:00:00.000Z",
+    "endTime": "2026-06-17T04:00:00.000Z",
+    "capacity": 2,
+    "unitId": "39bpm",
+    "id": "gn3zf",
+    "userIds": []
+  },
+  {
+    "scheduleName": "DETRAN 13:00 a 01:00",
+    "startTime": "2026-06-17T16:00:00.000Z",
+    "endTime": "2026-06-18T04:00:00.000Z",
+    "capacity": 2,
+    "unitId": "39bpm",
+    "id": "ya8zvw",
+    "userIds": []
+  },
+  {
+    "scheduleName": "DETRAN 13:00 a 01:00",
+    "startTime": "2026-06-18T16:00:00.000Z",
+    "endTime": "2026-06-19T04:00:00.000Z",
+    "capacity": 2,
+    "unitId": "39bpm",
+    "id": "j5p5xi",
+    "userIds": []
+  },
+  {
+    "scheduleName": "DETRAN 13:00 a 01:00",
+    "startTime": "2026-06-23T16:00:00.000Z",
+    "endTime": "2026-06-24T04:00:00.000Z",
+    "capacity": 2,
+    "unitId": "39bpm",
+    "id": "ijw66d",
+    "userIds": []
+  },
+  {
+    "scheduleName": "DETRAN 13:00 a 01:00",
+    "startTime": "2026-06-24T16:00:00.000Z",
+    "endTime": "2026-06-25T04:00:00.000Z",
+    "capacity": 2,
+    "unitId": "39bpm",
+    "id": "1tt0z8",
+    "userIds": []
+  },
+  {
+    "scheduleName": "DETRAN 13:00 a 01:00",
+    "startTime": "2026-06-25T16:00:00.000Z",
+    "endTime": "2026-06-26T04:00:00.000Z",
+    "capacity": 2,
+    "unitId": "39bpm",
+    "id": "p4lo3",
+    "userIds": []
+  },
+  {
+    "scheduleName": "DETRAN 12:00 as 00:00",
+    "startTime": "2026-06-30T15:00:00.000Z",
+    "endTime": "2026-07-01T02:59:00.000Z",
+    "capacity": 1,
+    "unitId": "39bpm",
+    "id": "0fd89r",
+    "userIds": []
+  },
+  {
+    "scheduleName": "24 Horas - AC/4",
+    "startTime": "2026-06-01T10:00:00.000Z",
+    "endTime": "2026-06-02T10:00:00.000Z",
+    "capacity": 1,
+    "unitId": "39bpm",
+    "id": "2m1sy7",
+    "userIds": []
+  },
+  {
+    "scheduleName": "24 Horas - AC/4",
+    "startTime": "2026-06-11T10:00:00.000Z",
+    "endTime": "2026-06-12T10:00:00.000Z",
+    "capacity": 1,
+    "unitId": "39bpm",
+    "id": "w15m79",
+    "userIds": []
+  },
+  {
+    "scheduleName": "24 Horas - AC/4",
+    "startTime": "2026-06-15T10:00:00.000Z",
+    "endTime": "2026-06-16T10:00:00.000Z",
+    "capacity": 2,
+    "unitId": "39bpm",
+    "id": "kr44ig",
+    "userIds": []
+  },
+  {
+    "scheduleName": "24 Horas - AC/4",
+    "startTime": "2026-06-17T10:00:00.000Z",
+    "endTime": "2026-06-18T10:00:00.000Z",
+    "capacity": 2,
+    "unitId": "39bpm",
+    "id": "7wwiy7",
+    "userIds": []
+  },
+  {
+    "scheduleName": "24 Horas - AC/4",
+    "startTime": "2026-06-19T10:00:00.000Z",
+    "endTime": "2026-06-20T10:00:00.000Z",
+    "capacity": 2,
+    "unitId": "39bpm",
+    "id": "c56efn",
+    "userIds": []
+  },
+  {
+    "scheduleName": "24 Horas - AC/4",
+    "startTime": "2026-06-21T10:00:00.000Z",
+    "endTime": "2026-06-22T10:00:00.000Z",
+    "capacity": 2,
+    "unitId": "39bpm",
+    "id": "kw0c2",
+    "userIds": []
+  },
+  {
+    "scheduleName": "24 Horas - AC/4",
+    "startTime": "2026-06-23T10:00:00.000Z",
+    "endTime": "2026-06-24T10:00:00.000Z",
+    "capacity": 1,
+    "unitId": "39bpm",
+    "id": "bz2hzg",
+    "userIds": []
+  },
+  {
+    "scheduleName": "24 Horas - AC/4",
+    "startTime": "2026-06-25T10:00:00.000Z",
+    "endTime": "2026-06-26T10:00:00.000Z",
+    "capacity": 1,
+    "unitId": "39bpm",
+    "id": "5dq0f",
+    "userIds": []
+  },
+  {
+    "scheduleName": "Recobrimento 19:00 as 07:00",
+    "startTime": "2026-06-07T22:00:00.000Z",
+    "endTime": "2026-06-08T10:00:00.000Z",
+    "capacity": 2,
+    "unitId": "39bpm",
+    "id": "zbe5j",
+    "userIds": []
   }
 ]
