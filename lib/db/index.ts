@@ -716,7 +716,10 @@ export const db = {
         if (updated && updated[0]) return mapDbToSettings(updated[0]);
         throw new Error("Supabase request failed or returned empty data");
       } catch (error: any) {
-        console.error("ERRO CRÍTICO no Supabase (settings.update). Caindo no fallback local JSON! Detalhes:", error);
+        console.error("ERRO CRÍTICO no Supabase (settings.update). Detalhes:", error);
+        if (isVercel) {
+          throw error;
+        }
         const settingsList = getLocalSettings();
         const index = settingsList.findIndex(s => s.unitId === unitId);
         
