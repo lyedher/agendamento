@@ -523,17 +523,17 @@ export async function validateUserRestWindow(
         const ordStart = toZonedTime(formatInTimeZone(d, timeZone, "yyyy-MM-dd'T'07:00:00"), timeZone);
         const ordEnd = new Date(ordStart.getTime() + 24 * 60 * 60 * 1000);
 
-        // Janela proibida com as 5 horas de descanso antes e depois:
-        const forbiddenStart = new Date(ordStart.getTime() - 5 * 60 * 60 * 1000);
-        const forbiddenEnd = new Date(ordEnd.getTime() + 5 * 60 * 60 * 1000);
+        // Sem limitação de 5 horas de descanso, apenas impede sobreposição de horários direta
+        const forbiddenStart = ordStart;
+        const forbiddenEnd = ordEnd;
 
-        // Se a escala extra sobrepõe a janela proibida:
+        // Se a escala extra sobrepõe o plantão ordinário:
         if (extraStart < forbiddenEnd && extraEnd > forbiddenStart) {
           const ordStartFormatted = formatInTimeZone(ordStart, timeZone, "dd/MM/yyyy HH:mm");
           const ordEndFormatted = formatInTimeZone(ordEnd, timeZone, "dd/MM/yyyy HH:mm");
           return {
             valid: false,
-            message: `Intervalo de descanso insuficiente em relação ao plantão ordinário da equipe ${teamOnD} das ${ordStartFormatted} às ${ordEndFormatted}. É necessária uma janela de descanso de 5 horas antes e depois.`
+            message: `Conflito de horário com o plantão ordinário da equipe ${teamOnD} das ${ordStartFormatted} às ${ordEndFormatted}.`
           };
         }
       }
@@ -547,16 +547,16 @@ export async function validateUserRestWindow(
       const existingStart = new Date(s.startTime);
       const existingEnd = new Date(s.endTime);
 
-      // Janela proibida ao redor da escala extra existente:
-      const forbiddenStart = new Date(existingStart.getTime() - 5 * 60 * 60 * 1000);
-      const forbiddenEnd = new Date(existingEnd.getTime() + 5 * 60 * 60 * 1000);
+      // Sem limitação de 5 horas de descanso, apenas impede sobreposição de horários direta
+      const forbiddenStart = existingStart;
+      const forbiddenEnd = existingEnd;
 
       if (extraStart < forbiddenEnd && extraEnd > forbiddenStart) {
         const existingStartFormatted = formatInTimeZone(existingStart, timeZone, "dd/MM/yyyy HH:mm");
         const existingEndFormatted = formatInTimeZone(existingEnd, timeZone, "dd/MM/yyyy HH:mm");
         return {
           valid: false,
-          message: `Conflito com outra escala extra agendada (${s.scheduleName} das ${existingStartFormatted} às ${existingEndFormatted}). É necessária uma janela de descanso de 5 horas entre escalas extras.`
+          message: `Conflito de horário com outra escala extra agendada (${s.scheduleName} das ${existingStartFormatted} às ${existingEndFormatted}).`
         };
       }
     }
