@@ -380,6 +380,8 @@ function AdminDashboardContent() {
     if (res.success) {
       setEditingUser(null);
       loadData();
+    } else {
+      alert("Erro ao atualizar policial: " + res.message);
     }
   };
 

@@ -413,12 +413,17 @@ export const db = {
     },
     async update(id: string, data: Partial<User>): Promise<User | undefined> {
       try {
+        if (!SUPABASE_URL) throw new Error("Supabase URL not configured");
         const res = await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${encodeURIComponent(id)}`, {
           method: 'PATCH',
           headers,
           body: JSON.stringify(mapUserToDb(data))
         });
-        if (!res.ok) throw new Error();
+        if (!res.ok) {
+          const errBody = await res.text().catch(() => "Sem corpo de erro");
+          console.error(`Erro ao atualizar usuário no Supabase. Status: ${res.status}. Resposta:`, errBody);
+          throw new Error(`Erro no Supabase (Status ${res.status}): ${errBody}`);
+        }
         const updated = await res.json();
         try {
           const users = getLocalUsers();
@@ -432,7 +437,11 @@ export const db = {
         }
         return mapDbToUser(updated[0]);
 
-      } catch {
+      } catch (err: any) {
+        console.error("ERRO CRÍTICO no Supabase (users.update). Detalhes:", err);
+        if (isVercel) {
+          throw err;
+        }
         const users = getLocalUsers();
         const index = users.findIndex(u => u.id === id);
         if (index === -1) return undefined;
