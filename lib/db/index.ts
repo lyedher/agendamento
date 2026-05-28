@@ -31,6 +31,7 @@ export interface User {
   returnDate?: string; // Data de retorno do afastamento (YYYY-MM-DD)
   transferDate?: string; // Data da transferência (YYYY-MM-DD)
   fichaData?: string;
+  vtr?: string; // Viatura padrão do militar
 }
 
 export interface Unit {
@@ -65,6 +66,7 @@ export interface AppSettings {
   openDateTime: string; // ISO string
   closeDateTime: string; // ISO string
   inviteCode?: string;
+  ordinaryScaleLayout?: 'seniority' | 'vtr_pairs'; // Layout da escala ordinária
 }
 
 export interface AuditLog {
@@ -260,6 +262,7 @@ export function mapUserToDb(user: Partial<User>) {
   if (user.transferDate !== undefined) mapped.transfer_date = user.transferDate || null;
   if (user.fichaData !== undefined) mapped.ficha_data = user.fichaData;
   if (user.teamHistory !== undefined) mapped.team_history = user.teamHistory;
+  if (user.vtr !== undefined) mapped.vtr = user.vtr || null;
   return mapped;
 }
 
@@ -288,7 +291,8 @@ export function mapDbToUser(dbUser: any): User {
     returnDate: dbUser.return_date,
     transferDate: dbUser.transfer_date,
     fichaData: dbUser.ficha_data,
-    teamHistory: dbUser.team_history
+    teamHistory: dbUser.team_history,
+    vtr: dbUser.vtr
   };
 }
 
@@ -301,7 +305,8 @@ export function mapDbToSettings(dbRow: any): AppSettings {
     maxMonthlySlots: dbRow.max_monthly_slots ?? 10,
     openDateTime: dbRow.open_date_time || new Date().toISOString(),
     closeDateTime: dbRow.close_date_time || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-    inviteCode: dbRow.invite_code || 'stiv'
+    inviteCode: dbRow.invite_code || 'stiv',
+    ordinaryScaleLayout: dbRow.ordinary_scale_layout || 'seniority'
   };
 }
 
@@ -314,6 +319,7 @@ export function mapSettingsToDb(settings: Partial<AppSettings>): any {
   if (settings.openDateTime !== undefined) dbRow.open_date_time = settings.openDateTime || null;
   if (settings.closeDateTime !== undefined) dbRow.close_date_time = settings.closeDateTime || null;
   if (settings.inviteCode !== undefined) dbRow.invite_code = settings.inviteCode;
+  if (settings.ordinaryScaleLayout !== undefined) dbRow.ordinary_scale_layout = settings.ordinaryScaleLayout;
   return dbRow;
 }
 
@@ -662,7 +668,14 @@ export const db = {
         return mapDbToSettings(data[0]);
       } catch {
         const settingsList = getLocalSettings();
-        const unitSettings = settingsList.find(s => s.unitId === unitId);
+        let unitSettings = settingsList.find(s => s.unitId === unitId);
+        
+        if (!unitSettings && settingsList.length > 0) {
+          unitSettings = {
+            ...settingsList[0],
+            unitId: unitId
+          };
+        }
         
         if (unitSettings) return unitSettings;
         

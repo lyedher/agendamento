@@ -34,6 +34,7 @@ CREATE TABLE users (
     service_type TEXT,
     team_history TEXT,
     ficha_data TEXT,
+    vtr TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -45,6 +46,7 @@ CREATE TABLE settings (
     open_date_time TIMESTAMP WITH TIME ZONE,
     close_date_time TIMESTAMP WITH TIME ZONE,
     invite_code TEXT,
+    ordinary_scale_layout TEXT DEFAULT 'seniority',
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 

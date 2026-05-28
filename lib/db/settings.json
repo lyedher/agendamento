@@ -9,5 +9,6 @@
   "maxMonthlySlots": 10,
   "openDateTime": "2026-05-01T16:00:00.000Z",
   "closeDateTime": "2026-05-01T17:00:00.000Z",
-  "inviteCode": "stiv"
+  "inviteCode": "stiv",
+  "ordinaryScaleLayout": "seniority"
 }

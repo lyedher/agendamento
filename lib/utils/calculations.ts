@@ -5,16 +5,62 @@ export interface Ac4Rates {
   redNight: number;
 }
 
+export function getSaoPauloDateParts(date: Date) {
+  try {
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/Sao_Paulo',
+      year: 'numeric',
+      month: 'numeric',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: 'numeric',
+      second: 'numeric',
+      hour12: false
+    });
+    const parts = formatter.formatToParts(date);
+    const year = parseInt(parts.find(p => p.type === 'year')?.value || '0');
+    const month = parseInt(parts.find(p => p.type === 'month')?.value || '0') - 1; // 0-based
+    const day = parseInt(parts.find(p => p.type === 'day')?.value || '0');
+    const hour = parseInt(parts.find(p => p.type === 'hour')?.value || '0') % 24;
+    const minute = parseInt(parts.find(p => p.type === 'minute')?.value || '0');
+    const second = parseInt(parts.find(p => p.type === 'second')?.value || '0');
+    
+    const localDate = new Date(year, month, day, hour, minute, second);
+    return {
+      year,
+      month,
+      day,
+      hour,
+      minute,
+      second,
+      dayOfWeek: localDate.getDay()
+    };
+  } catch (e) {
+    return {
+      year: date.getFullYear(),
+      month: date.getMonth(),
+      day: date.getDate(),
+      hour: date.getHours(),
+      minute: date.getMinutes(),
+      second: date.getSeconds(),
+      dayOfWeek: date.getDay()
+    };
+  }
+}
+
 export const calculateSingleScheduleValue = (s: any, rates: Ac4Rates) => {
   if (!s.startTime || !s.endTime) return 0;
   const start = new Date(s.startTime);
   const end = new Date(s.endTime);
   let total = 0;
-  const current = new Date(start);
+  let currentMs = start.getTime();
+  const endMs = end.getTime();
   
-  while (current < end) {
-    const hour = current.getHours();
-    const dayOfWeek = current.getDay(); 
+  while (currentMs < endMs) {
+    const current = new Date(currentMs);
+    const parts = getSaoPauloDateParts(current);
+    const hour = parts.hour;
+    const dayOfWeek = parts.dayOfWeek;
     
     // Regra: Sexta 06h até Segunda 06h = Escala Vermelha
     let isVermelha = false;
@@ -34,7 +80,7 @@ export const calculateSingleScheduleValue = (s: any, rates: Ac4Rates) => {
     } else {
       total += isNight ? rates.blueNight : rates.blueDay;
     }
-    current.setHours(current.getHours() + 1);
+    currentMs += 3600000;
   }
   return total;
 };
@@ -51,8 +97,8 @@ export const calculateUserAc4Summary = (userId: string, schedules: any[], rates:
   const filteredSchedules = schedules.filter(s => {
     if (!s.userIds || !s.userIds.includes(userId)) return false;
     if (targetMonth !== undefined && targetYear !== undefined) {
-      const start = new Date(s.startTime);
-      return start.getMonth() === targetMonth && start.getFullYear() === targetYear;
+      const startParts = getSaoPauloDateParts(new Date(s.startTime));
+      return startParts.month === targetMonth && startParts.year === targetYear;
     }
     return true;
   });
@@ -61,11 +107,14 @@ export const calculateUserAc4Summary = (userId: string, schedules: any[], rates:
     extraCount++;
     const start = new Date(s.startTime);
     const end = new Date(s.endTime);
-    const current = new Date(start);
+    let currentMs = start.getTime();
+    const endMs = end.getTime();
     
-    while (current < end) {
-      const hour = current.getHours();
-      const dayOfWeek = current.getDay(); 
+    while (currentMs < endMs) {
+      const current = new Date(currentMs);
+      const parts = getSaoPauloDateParts(current);
+      const hour = parts.hour;
+      const dayOfWeek = parts.dayOfWeek;
       
       let isVermelha = false;
       if (dayOfWeek === 5) { isVermelha = hour >= 6; }
@@ -92,7 +141,7 @@ export const calculateUserAc4Summary = (userId: string, schedules: any[], rates:
         }
       }
       totalHours += 1;
-      current.setHours(current.getHours() + 1);
+      currentMs += 3600000;
     }
   });
 
@@ -117,7 +166,7 @@ export const getUserTeamOnDate = (user: any, dateStr: string): string => {
           const afterStart = start === "" || dateStr >= start;
           const beforeEnd = end === "" || dateStr <= end;
           if (afterStart && beforeEnd) {
-            return entry.team;
+            return entry.team !== undefined ? entry.team : (user.workTeam || "");
           }
         }
       }
@@ -146,7 +195,7 @@ export const getUserJobFunctionOnDate = (user: any, dateStr: string): string => 
           const afterStart = start === "" || dateStr >= start;
           const beforeEnd = end === "" || dateStr <= end;
           if (afterStart && beforeEnd) {
-            return entry.jobFunction || user.jobFunction || "";
+            return entry.jobFunction !== undefined ? entry.jobFunction : (user.jobFunction || "");
           }
         }
       }
@@ -155,4 +204,33 @@ export const getUserJobFunctionOnDate = (user: any, dateStr: string): string => 
     }
   }
   return user.jobFunction || "";
+};
+
+export const getUserVtrOnDate = (user: any, dateStr: string): string => {
+  if (user.teamHistory && user.teamHistory.trim() !== "") {
+    try {
+      const history = JSON.parse(user.teamHistory);
+      if (Array.isArray(history) && history.length > 0) {
+        // Ordena decrescente por startDate para priorizar o registro ativo mais recente
+        const sortedHistory = [...history].sort((a: any, b: any) => {
+          const dateA = a.startDate || "";
+          const dateB = b.startDate || "";
+          return dateB.localeCompare(dateA);
+        });
+
+        for (const entry of sortedHistory) {
+          const start = entry.startDate || "";
+          const end = entry.endDate || "";
+          const afterStart = start === "" || dateStr >= start;
+          const beforeEnd = end === "" || dateStr <= end;
+          if (afterStart && beforeEnd) {
+            return entry.vtr !== undefined ? entry.vtr : (user.vtr || "");
+          }
+        }
+      }
+    } catch (e) {
+      console.error("Erro ao analisar teamHistory para VTR do militar", user.id, e);
+    }
+  }
+  return user.vtr || "";
 };

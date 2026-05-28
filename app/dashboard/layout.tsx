@@ -2,10 +2,11 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Calendar, Users, LogOut, Shield, Clock, Plus, Calculator, FileText, ClipboardList, User, Instagram, MessageCircle } from "lucide-react";
 import { getUsers, getSchedules, updateUser, logout, getCurrentUser } from "@/lib/actions";
+import { getSaoPauloDateParts } from "@/lib/utils/calculations";
 
 export default function DashboardLayout({
   children,
@@ -13,6 +14,7 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const [usersList, setUsersList] = useState<any[]>([]);
   const [schedulesList, setSchedulesList] = useState<any[]>([]);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
@@ -63,12 +65,16 @@ export default function DashboardLayout({
   const [currentUser, setCurrentUser] = useState<any>(null);
 
   useEffect(() => {
-    async function loadData() {
-      const [resUsers, resSchedules, resMe] = await Promise.all([getUsers(), getSchedules(), getCurrentUser()]);
-      if (resUsers.success) setUsersList(resUsers.users);
-      if (resSchedules.success) setSchedulesList(resSchedules.schedules);
-      if (resMe.success) setCurrentUser(resMe.user);
+    async function loadMe() {
+      const resMe = await getCurrentUser();
+      if (resMe && resMe.success) setCurrentUser(resMe.user);
     }
+    async function loadData() {
+      const [resUsers, resSchedules] = await Promise.all([getUsers(), getSchedules()]);
+      if (resUsers && resUsers.success) setUsersList(resUsers.users);
+      if (resSchedules && resSchedules.success) setSchedulesList(resSchedules.schedules);
+    }
+    loadMe();
     loadData();
   }, []);
 
@@ -181,29 +187,36 @@ export default function DashboardLayout({
     let redDayHours = 0;
     let redNightHours = 0;
 
-    const userSchedules = schedulesList.filter(s => s.userIds && s.userIds.includes(userId));
+    const spToday = getSaoPauloDateParts(new Date());
+
+    const userSchedules = schedulesList.filter(s => {
+      if (!s.userIds || !s.userIds.includes(userId)) return false;
+      const startParts = getSaoPauloDateParts(new Date(s.startTime));
+      return startParts.month === spToday.month && startParts.year === spToday.year;
+    });
 
     userSchedules.forEach(s => {
       if (!s.startTime || !s.endTime) return;
       const start = new Date(s.startTime);
       const end = new Date(s.endTime);
+      let currentMs = start.getTime();
+      const endMs = end.getTime();
       
-      const current = new Date(start);
-      while (current < end) {
-        const hour = current.getHours();
-        const dayOfWeek = current.getDay();
+      while (currentMs < endMs) {
+        const current = new Date(currentMs);
+        const parts = getSaoPauloDateParts(current);
+        const hour = parts.hour;
+        const dayOfWeek = parts.dayOfWeek;
         
-        // Regra: Sexta 06h até Segunda 06h = Escala Vermelha
         let isVermelha = false;
-        if (dayOfWeek === 5) { // Sexta
+        if (dayOfWeek === 5) {
           isVermelha = hour >= 6;
-        } else if (dayOfWeek === 6 || dayOfWeek === 0) { // Sábado ou Domingo
+        } else if (dayOfWeek === 6 || dayOfWeek === 0) {
           isVermelha = true;
-        } else if (dayOfWeek === 1) { // Segunda
+        } else if (dayOfWeek === 1) {
           isVermelha = hour < 6;
         }
 
-        // Regra: 06h até 22h = Diurno, 22h até 06h = Noturno
         const isNight = hour >= 22 || hour < 6;
 
         if (isVermelha) {
@@ -225,7 +238,7 @@ export default function DashboardLayout({
         }
 
         totalHours += 1;
-        current.setHours(current.getHours() + 1);
+        currentMs += 3600000;
       }
     });
 
@@ -451,7 +464,74 @@ export default function DashboardLayout({
       {/* Main Layout */}
       <div className="flex-1 flex max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 gap-8">
         {/* Sidebar */}
-        
+        {(() => {
+          const isActive = (path: string) => pathname === path;
+          const menuItems = [
+            { name: "Visão Geral", path: "/dashboard", icon: ClipboardList },
+            { name: "Agendar Escala", path: "/dashboard/agendamento", icon: Plus },
+            { name: "Meu Perfil", path: "/dashboard/perfil", icon: User },
+          ];
+
+          if (currentUser?.role === 'admin' || currentUser?.role === 'superadmin') {
+            menuItems.push({ name: "Painel Adm", path: "/admin/dashboard", icon: Shield });
+          }
+
+          return (
+            <aside className="hidden lg:flex flex-col w-64 shrink-0 h-fit sticky top-24 space-y-6">
+              <div className="bg-white rounded-2xl border shadow-lg overflow-hidden p-4 space-y-4">
+                <div className="px-3 py-2 border-b">
+                  <span className="block font-black text-xs text-gray-900 uppercase tracking-wider" style={{ fontFamily: 'Space Grotesk, sans-serif', color: '#79A3B1' }}>
+                    Navegação
+                  </span>
+                </div>
+                <nav className="flex flex-col gap-1">
+                  {menuItems.map((item, idx) => {
+                    const Icon = item.icon;
+                    const active = isActive(item.path);
+                    return (
+                      <Link 
+                        key={idx} 
+                        href={item.path}
+                        className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all ${
+                          active 
+                            ? "bg-[#79A3B1] text-white shadow-md shadow-[#79A3B1]/20 scale-[1.02]" 
+                            : "text-gray-600 hover:bg-[#79A3B1]/10 hover:text-[#79A3B1]"
+                        }`}
+                      >
+                        <Icon className={`h-4.5 w-4.5 ${active ? "text-white" : "text-[#79A3B1]"}`} />
+                        {item.name}
+                      </Link>
+                    );
+                  })}
+                </nav>
+                <div className="pt-2 border-t">
+                  <button
+                    onClick={handleLogout}
+                    className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold text-red-600 hover:bg-red-50 transition-colors"
+                  >
+                    <LogOut className="h-4.5 w-4.5 text-red-500" />
+                    Sair
+                  </button>
+                </div>
+              </div>
+              
+              <div className="bg-gradient-to-br from-[#79A3B1] to-[#658b99] rounded-2xl shadow-xl p-5 text-white relative overflow-hidden group">
+                <div className="absolute -right-8 -bottom-8 w-24 h-24 bg-white/10 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-500" />
+                <span className="text-[9px] font-black uppercase tracking-widest text-white/70 block mb-1">Precisa de Ajuda?</span>
+                <h5 className="font-bold text-sm mb-1 leading-snug">Dúvidas com Escalas?</h5>
+                <p className="text-[10px] text-white/80 leading-normal mb-3">Consulte a cota mensal ou fale com o comandante da sua unidade.</p>
+                <div className="flex items-center gap-2">
+                  <button 
+                    onClick={() => setIsAc4ModalOpen(true)}
+                    className="flex-1 bg-white/20 hover:bg-white/30 text-white font-bold text-[10px] uppercase py-2 px-3 rounded-lg backdrop-blur-sm transition-colors text-center"
+                  >
+                    Calculadora AC-4
+                  </button>
+                </div>
+              </div>
+            </aside>
+          );
+        })()}
 
         {/* Content */}
         <main className="flex-1 bg-white rounded-2xl shadow-xl border p-6 md:p-8 animate-in fade-in duration-500">
@@ -480,10 +560,10 @@ export default function DashboardLayout({
             </div>
             
             <div className="py-6 grid grid-cols-1 md:grid-cols-2 gap-8">
-              {/* Lado Esquerdo: Extrato Consolidado */}
+              {/* Lado Esquerdo: Extrato Mensal */}
               <div className="space-y-4 border-r md:pr-6">
                 <h4 className="text-sm font-bold text-gray-700 uppercase tracking-wider flex items-center gap-1">
-                  Extrato Consolidado
+                  Extrato do Mês Atual
                 </h4>
                 {(() => {
                   const ac4 = calculateAc4ForUser(currentUser.id);

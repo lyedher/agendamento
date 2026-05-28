@@ -37,10 +37,10 @@ export default function AgendamentoPage() {
  
   async function loadData() {
     const [resU, resS, resSet, resMe] = await Promise.all([getUsers(), getSchedules(), getSettings(), getCurrentUser()]);
-    if (resU.success) setUsersList(resU.users);
-    if (resS.success) setSchedulesList(resS.schedules);
-    if (resSet.success) setSettings(resSet.settings);
-    if (resMe.success) setCurrentUser(resMe.user);
+    if (resU && resU.success) setUsersList(resU.users);
+    if (resS && resS.success) setSchedulesList(resS.schedules);
+    if (resSet && resSet.success) setSettings(resSet.settings);
+    if (resMe && resMe.success) setCurrentUser(resMe.user);
   }
  
   const activeUser = currentUser || { id: "" };
@@ -84,8 +84,37 @@ export default function AgendamentoPage() {
     setIsLoading(false);
   };
 
-  const selectedDateStr = selectedDate ? selectedDate.toISOString().split('T')[0] : "";
-  const schedulesForSelectedDate = schedulesList.filter(s => s.startTime?.startsWith(selectedDateStr));
+  const getSaoPauloDateStr = (date: Date | null) => {
+    if (!date) return "";
+    try {
+      const formatter = new Intl.DateTimeFormat('sv-SE', {
+        timeZone: 'America/Sao_Paulo',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      });
+      return formatter.format(date); // returns "YYYY-MM-DD"
+    } catch (e) {
+      return date.toISOString().split('T')[0];
+    }
+  };
+  const selectedDateStr = getSaoPauloDateStr(selectedDate);
+  const schedulesForSelectedDate = schedulesList.filter(s => {
+    if (!s.startTime) return false;
+    // s.startTime is UTC ISO string. Let's get its YYYY-MM-DD in America/Sao_Paulo timezone:
+    try {
+      const formatter = new Intl.DateTimeFormat('sv-SE', {
+        timeZone: 'America/Sao_Paulo',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      });
+      const sDateStr = formatter.format(new Date(s.startTime));
+      return sDateStr === selectedDateStr;
+    } catch (e) {
+      return s.startTime.startsWith(selectedDateStr);
+    }
+  });
 
   return (
     <div className="space-y-6">
@@ -113,8 +142,8 @@ export default function AgendamentoPage() {
                 </p>
                 <p className="text-xs text-gray-500 font-medium">
                   {isWindowOpen 
-                    ? `Encerra em: ${new Date(settings.closeDateTime).toLocaleString('pt-BR')}`
-                    : `Abre em: ${new Date(settings.openDateTime).toLocaleString('pt-BR')}`}
+                    ? `Encerra em: ${new Date(settings.closeDateTime).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}`
+                    : `Abre em: ${new Date(settings.openDateTime).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}`}
                 </p>
               </div>
             </CardContent>
@@ -279,7 +308,7 @@ export default function AgendamentoPage() {
         <div className="lg:col-span-7 space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-xl font-bold text-gray-800">
-              {selectedDate ? selectedDate.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' }) : "Selecione uma data"}
+              {selectedDate ? selectedDate.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: 'long', year: 'numeric' }) : "Selecione uma data"}
             </h3>
             <span className="text-sm font-medium text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
               {schedulesForSelectedDate.length} {schedulesForSelectedDate.length === 1 ? 'escala encontrada' : 'escalas encontradas'}
@@ -305,7 +334,7 @@ export default function AgendamentoPage() {
                     <div className="flex flex-col md:flex-row">
                       <div className={`md:w-32 flex flex-col items-center justify-center p-4 text-white ${isVolunteered ? 'bg-emerald-500' : 'bg-[#79A3B1]'}`}>
                         <Clock size={24} className="mb-1 opacity-80" />
-                        <span className="text-lg font-black">{start.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+                        <span className="text-lg font-black">{start.toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' })}</span>
                         <span className="text-[10px] uppercase opacity-80 font-bold">Início</span>
                       </div>
                       
@@ -321,7 +350,7 @@ export default function AgendamentoPage() {
                               )}
                             </div>
                             <p className="text-sm text-gray-500">
-                              Término previsto: {end.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} ({end.toLocaleDateString('pt-BR')})
+                              Término previsto: {end.toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' })} ({end.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })})
                             </p>
                           </div>
 

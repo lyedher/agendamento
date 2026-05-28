@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Calendar, Users, LogOut, Printer, ShieldAlert, FileText, AlertCircle, Search, Edit3, Check, Trash2, Plus, CalendarDays, X, UserPlus, Shield, Calculator, UserCheck, TrendingUp, ShieldCheck, UsersRound, AlertTriangle, Settings, Clock, Lock, Instagram, MessageCircle, ClipboardList } from "lucide-react";
 import { getUsers, updateUser, getSchedules, createSchedule, deleteSchedule, updateSchedule, adminAddUser, getSettings, updateSettings, getCurrentUser, getUnits, deleteUser, promoteUserToAdmin, logout } from "@/lib/actions";
-import { calculateSingleScheduleValue, calculateUserAc4Summary, getUserTeamOnDate, getUserJobFunctionOnDate } from "@/lib/utils/calculations";
+import { calculateSingleScheduleValue, calculateUserAc4Summary, getUserTeamOnDate, getUserJobFunctionOnDate, getUserVtrOnDate } from "@/lib/utils/calculations";
 
 import { maskRG, maskCPF, maskPhone, formatRG, formatCPF, formatPhone } from "@/lib/utils/masks";
 
@@ -76,7 +76,8 @@ function AdminDashboardContent() {
     absenceReason: "",
     phone: "",
     sortOrder: 999,
-    unitId: ""
+    unitId: "",
+    vtr: ""
   });
   const [availableUnits, setAvailableUnits] = useState<any[]>([]);
 
@@ -104,7 +105,10 @@ function AdminDashboardContent() {
         workTeam: "Alpha",
         birthDate: "",
         phone: "",
-        sortOrder: 999
+        sortOrder: 999,
+        absenceReason: "",
+        unitId: "",
+        vtr: ""
       });
       loadData();
     } else {
@@ -125,6 +129,7 @@ function AdminDashboardContent() {
     inviteCode: ""
   });
   const [dutyBaseline, setDutyBaseline] = useState("2026-05-01");
+  const [ordinaryScaleLayout, setOrdinaryScaleLayout] = useState<'seniority' | 'vtr_pairs'>('seniority');
 
   const [selectedFilterDay, setSelectedFilterDay] = useState<number | null>(null);
 
@@ -178,10 +183,10 @@ function AdminDashboardContent() {
       getUnits()
     ]);
 
-    if (uRes.success) setUsersList(uRes.users);
-    if (sRes.success) setSchedulesList(sRes.schedules);
-    if (unitsRes.success) setAvailableUnits(unitsRes.units);
-    if (setRes.success && setRes.settings) {
+    if (uRes && uRes.success) setUsersList(uRes.users);
+    if (sRes && sRes.success) setSchedulesList(sRes.schedules);
+    if (unitsRes && unitsRes.success) setAvailableUnits(unitsRes.units);
+    if (setRes && setRes.success && setRes.settings) {
       setAc4Rates(setRes.settings.ac4Rates);
       setMaxMonthlySlots(setRes.settings.maxMonthlySlots);
 
@@ -189,9 +194,22 @@ function AdminDashboardContent() {
         if (!utcStr) return "";
         const d = new Date(utcStr);
         if (isNaN(d.getTime())) return "";
-        const tzOffset = d.getTimezoneOffset() * 60000;
-        const localDate = new Date(d.getTime() - tzOffset);
-        return localDate.toISOString().slice(0, 16);
+        try {
+          const formatter = new Intl.DateTimeFormat('sv-SE', {
+            timeZone: 'America/Sao_Paulo',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false
+          });
+          return formatter.format(d).replace(' ', 'T').slice(0, 16);
+        } catch (e) {
+          const tzOffset = d.getTimezoneOffset() * 60000;
+          const localDate = new Date(d.getTime() - tzOffset);
+          return localDate.toISOString().slice(0, 16);
+        }
       };
 
       setSchedulingWindow({
@@ -200,8 +218,18 @@ function AdminDashboardContent() {
         inviteCode: setRes.settings.inviteCode || ""
       });
       setDutyBaseline(setRes.settings.dutyBaseline || "2026-05-01");
+      setOrdinaryScaleLayout(setRes.settings.ordinaryScaleLayout || "seniority");
     }
     setIsLoading(false);
+  };
+
+  const parseSaoPauloToUTC = (localStr: string) => {
+    if (!localStr) return "";
+    if (localStr.includes("Z") || localStr.includes("+") || (localStr.includes("-") && localStr.split("-").length > 3)) {
+      return new Date(localStr).toISOString();
+    }
+    const normalized = localStr.includes("T") ? localStr : `${localStr}T00:00`;
+    return new Date(`${normalized}-03:00`).toISOString();
   };
 
   const handleSaveSettings = async () => {
@@ -209,10 +237,11 @@ function AdminDashboardContent() {
     const res = await updateSettings({
       ac4Rates,
       maxMonthlySlots,
-      openDateTime: schedulingWindow.openDateTime ? new Date(schedulingWindow.openDateTime).toISOString() : "",
-      closeDateTime: schedulingWindow.closeDateTime ? new Date(schedulingWindow.closeDateTime).toISOString() : "",
+      openDateTime: schedulingWindow.openDateTime ? parseSaoPauloToUTC(schedulingWindow.openDateTime) : "",
+      closeDateTime: schedulingWindow.closeDateTime ? parseSaoPauloToUTC(schedulingWindow.closeDateTime) : "",
       inviteCode: schedulingWindow.inviteCode,
-      dutyBaseline
+      dutyBaseline,
+      ordinaryScaleLayout
     }, unitId);
 
     if (res.success) {
@@ -294,8 +323,9 @@ function AdminDashboardContent() {
 
     const isTeamChanged = originalTeam && editingUser.workTeam !== originalTeam;
     const isJobFunctionChanged = originalUser && editingUser.jobFunction !== originalUser.jobFunction;
+    const isVtrChanged = originalUser && editingUser.vtr !== originalUser.vtr;
 
-    if (isTeamChanged || isJobFunctionChanged) {
+    if (isTeamChanged || isJobFunctionChanged || isVtrChanged) {
       const transitionDate = (() => {
         if (editingUser.workTeam === 'Afastado' && editingUser.absenceStartDate) {
           return editingUser.absenceStartDate;
@@ -303,11 +333,11 @@ function AdminDashboardContent() {
         if (editingUser.workTeam === 'Transferido' && editingUser.transferDate) {
           return editingUser.transferDate;
         }
-        if (originalTeam === 'Afastado' && (editingUser.returnDate || originalUser?.returnDate)) {
-          return editingUser.returnDate || originalUser?.returnDate;
-        }
         if (editingUser.teamTransitionDate) {
           return editingUser.teamTransitionDate;
+        }
+        if (originalTeam === 'Afastado' && (editingUser.returnDate || originalUser?.returnDate)) {
+          return editingUser.returnDate || originalUser?.returnDate;
         }
         const d = new Date();
         const pad = (n: number) => n.toString().padStart(2, '0');
@@ -323,19 +353,23 @@ function AdminDashboardContent() {
         }
       }
 
-      // Se o histórico estiver vazio, criamos uma entrada inicial para o time original com a função original
+      // Se o histórico estiver vazio, criamos uma entrada inicial para o time original com a função e VTR originais
       if (historyArray.length === 0) {
         historyArray.push({
           team: originalTeam || "",
           jobFunction: originalUser?.jobFunction || "",
+          vtr: originalUser?.vtr || "",
           startDate: "2026-05-01", // Início padrão do sistema
           endDate: ""
         });
       } else {
-        // Garantir que as entradas antigas no histórico tenham a propriedade jobFunction mapeada se não tiverem
+        // Garantir que as entradas antigas no histórico tenham a propriedade jobFunction e vtr mapeadas se não tiverem
         historyArray = historyArray.map(entry => {
           if (entry.jobFunction === undefined) {
             entry.jobFunction = originalUser?.jobFunction || "";
+          }
+          if (entry.vtr === undefined) {
+            entry.vtr = originalUser?.vtr || "";
           }
           return entry;
         });
@@ -355,12 +389,14 @@ function AdminDashboardContent() {
         if (lastEntry.startDate && transitionDate <= lastEntry.startDate) {
           lastEntry.team = editingUser.workTeam;
           lastEntry.jobFunction = editingUser.jobFunction;
+          lastEntry.vtr = editingUser.vtr;
         } else {
           lastEntry.endDate = dayBeforeStr;
-          // Adicionar a nova entrada para o novo time e função
+          // Adicionar a nova entrada para o novo time, função e VTR
           historyArray.push({
             team: editingUser.workTeam,
             jobFunction: editingUser.jobFunction,
+            vtr: editingUser.vtr,
             startDate: transitionDate,
             endDate: ""
           });
@@ -369,6 +405,7 @@ function AdminDashboardContent() {
         historyArray.push({
           team: editingUser.workTeam,
           jobFunction: editingUser.jobFunction,
+          vtr: editingUser.vtr,
           startDate: transitionDate,
           endDate: ""
         });
@@ -381,6 +418,7 @@ function AdminDashboardContent() {
       rank: editingUser.rank,
       jobFunction: editingUser.workTeam === 'Transferido' ? "" : editingUser.jobFunction,
       workTeam: editingUser.workTeam,
+      vtr: editingUser.workTeam === 'Transferido' ? "" : (editingUser.vtr || ""),
       sortOrder: editingUser.sortOrder,
       fullName: editingUser.fullName,
       nickname: editingUser.nickname,
@@ -393,7 +431,9 @@ function AdminDashboardContent() {
       birthDate: editingUser.birthDate,
       absenceReason: editingUser.workTeam === 'Afastado' ? editingUser.absenceReason : "",
       absenceStartDate: editingUser.workTeam === 'Afastado' ? (editingUser.absenceStartDate || "") : "",
-      returnDate: editingUser.workTeam === 'Transferido' ? "" : (editingUser.returnDate || ""),
+      returnDate: editingUser.workTeam === 'Afastado' 
+        ? (editingUser.returnDate || "") 
+        : (originalTeam === 'Afastado' ? (editingUser.teamTransitionDate || editingUser.returnDate || originalUser?.returnDate || "") : ""),
       transferDate: editingUser.workTeam === 'Transferido' ? (editingUser.transferDate || "") : "",
       teamHistory: updatedTeamHistory,
     };
@@ -477,21 +517,26 @@ function AdminDashboardContent() {
 
     setIsLoading(true);
     try {
+      const pad = (n: number) => n.toString().padStart(2, '0');
+      
       for (const day of selectedDays) {
-        const startParts = newScheduleData.startTime.split(":");
-        const endParts = newScheduleData.endTime.split(":");
+        const dateStr = `${creationYear}-${pad(creationMonth + 1)}-${pad(day)}`;
+        
+        // Append "-03:00" for America/Sao_Paulo timezone
+        const startISO = new Date(`${dateStr}T${newScheduleData.startTime}-03:00`).toISOString();
+        let endISO = new Date(`${dateStr}T${newScheduleData.endTime}-03:00`).toISOString();
 
-        const start = new Date(creationYear, creationMonth, day, parseInt(startParts[0]), parseInt(startParts[1]));
-        const end = new Date(creationYear, creationMonth, day, parseInt(endParts[0]), parseInt(endParts[1]));
-
-        if (end <= start) {
-          end.setDate(end.getDate() + 1);
+        if (new Date(endISO) <= new Date(startISO)) {
+          const d = new Date(`${dateStr}T12:00:00-03:00`);
+          d.setDate(d.getDate() + 1);
+          const nextDayStr = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+          endISO = new Date(`${nextDayStr}T${newScheduleData.endTime}-03:00`).toISOString();
         }
 
         await createSchedule({
           scheduleName: newScheduleData.scheduleName,
-          startTime: start.toISOString(),
-          endTime: end.toISOString(),
+          startTime: startISO,
+          endTime: endISO,
           capacity: newScheduleData.capacity
         }, unitId);
       }
@@ -518,12 +563,26 @@ function AdminDashboardContent() {
   // Manage Volunteers
   const handleOpenEditSchedule = (s: any) => {
     setEditingSchedule(s);
-    const start = new Date(s.startTime);
-    const end = new Date(s.endTime);
+
+    const getHourMinute = (isoStr: string) => {
+      if (!isoStr) return "00:00";
+      const d = new Date(isoStr);
+      try {
+        const formatter = new Intl.DateTimeFormat('sv-SE', {
+          timeZone: 'America/Sao_Paulo',
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false
+        });
+        return formatter.format(d);
+      } catch (e) {
+        return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+      }
+    };
 
     setEditScheduleHours({
-      startTime: `${String(start.getHours()).padStart(2, '0')}:${String(start.getMinutes()).padStart(2, '0')}`,
-      endTime: `${String(end.getHours()).padStart(2, '0')}:${String(end.getMinutes()).padStart(2, '0')}`,
+      startTime: getHourMinute(s.startTime),
+      endTime: getHourMinute(s.endTime),
       capacity: s.capacity || 1
     });
     setSelectedVolunteerId("");
@@ -532,29 +591,40 @@ function AdminDashboardContent() {
   const handleUpdateScheduleHours = async () => {
     if (!editingSchedule) return;
 
-    const baseStart = new Date(editingSchedule.startTime);
-    const baseEnd = new Date(editingSchedule.startTime); // Reset baseEnd to baseStart's date
+    try {
+      const tzDate = new Date(editingSchedule.startTime);
+      const formatter = new Intl.DateTimeFormat('sv-SE', {
+        timeZone: 'America/Sao_Paulo',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      });
+      const dateStr = formatter.format(tzDate); // "YYYY-MM-DD"
 
-    const startParts = editScheduleHours.startTime.split(":");
-    const endParts = editScheduleHours.endTime.split(":");
+      const startISO = new Date(`${dateStr}T${editScheduleHours.startTime}-03:00`).toISOString();
+      let endISO = new Date(`${dateStr}T${editScheduleHours.endTime}-03:00`).toISOString();
 
-    baseStart.setHours(parseInt(startParts[0]), parseInt(startParts[1]));
-    baseEnd.setHours(parseInt(endParts[0]), parseInt(endParts[1]));
+      if (new Date(endISO) <= new Date(startISO)) {
+        const d = new Date(`${dateStr}T12:00:00-03:00`);
+        d.setDate(d.getDate() + 1);
+        const pad = (n: number) => n.toString().padStart(2, '0');
+        const nextDayStr = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+        endISO = new Date(`${nextDayStr}T${editScheduleHours.endTime}-03:00`).toISOString();
+      }
 
-    if (baseEnd <= baseStart) {
-      baseEnd.setDate(baseEnd.getDate() + 1);
-    }
+      const res = await updateSchedule(editingSchedule.id, {
+        startTime: startISO,
+        endTime: endISO,
+        capacity: editScheduleHours.capacity
+      });
 
-    const res = await updateSchedule(editingSchedule.id, {
-      startTime: baseStart.toISOString(),
-      endTime: baseEnd.toISOString(),
-      capacity: editScheduleHours.capacity
-    });
-
-    if (res.success) {
-      setEditingSchedule(res.schedule);
-      loadData();
-      alert("Horários atualizados com sucesso!");
+      if (res.success) {
+        setEditingSchedule(res.schedule);
+        loadData();
+        alert("Horários atualizados com sucesso!");
+      }
+    } catch (e) {
+      alert("Erro ao atualizar horário da escala.");
     }
   };
 
@@ -820,6 +890,56 @@ function AdminDashboardContent() {
                         return (a.sortOrder ?? 999) - (b.sortOrder ?? 999);
                       });
 
+                    // Agrupamento por VTR para o modo vtr_pairs
+                    const vtrGroups: Record<string, any[]> = {};
+                    const nonVtrMembers: any[] = [];
+
+                    teamMembers.forEach(m => {
+                      const vtr = getUserVtrOnDate(m, checkDayStr);
+                      if (vtr && vtr.trim() !== "" && vtr.trim() !== "Nenhum") {
+                        if (!vtrGroups[vtr]) {
+                          vtrGroups[vtr] = [];
+                        }
+                        vtrGroups[vtr].push(m);
+                      } else {
+                        nonVtrMembers.push(m);
+                      }
+                    });
+
+                    // Ordenar integrantes dentro de cada VTR (Comandante primeiro, depois Motorista, depois outros)
+                    Object.keys(vtrGroups).forEach(vtrName => {
+                      vtrGroups[vtrName].sort((a, b) => {
+                        const funcA = getUserJobFunctionOnDate(a, checkDayStr) || "";
+                        const funcB = getUserJobFunctionOnDate(b, checkDayStr) || "";
+                        
+                        const isCmteA = funcA.toLowerCase().includes("comandante") || funcA.toLowerCase().includes("cpu");
+                        const isCmteB = funcB.toLowerCase().includes("comandante") || funcB.toLowerCase().includes("cpu");
+                        
+                        if (isCmteA && !isCmteB) return -1;
+                        if (!isCmteA && isCmteB) return 1;
+                        
+                        const isMotA = funcA.toLowerCase().includes("motorista");
+                        const isMotB = funcB.toLowerCase().includes("motorista");
+                        
+                        if (isMotA && !isMotB) return 1;
+                        if (!isMotA && isMotB) return -1;
+                        
+                        const weightA = RANKS.indexOf(a.rank);
+                        const weightB = RANKS.indexOf(b.rank);
+                        if (weightA !== weightB) return weightB - weightA;
+                        return (a.sortOrder ?? 999) - (b.sortOrder ?? 999);
+                      });
+                    });
+
+                    // Ordenar as viaturas (CPU primeiro, depois numéricas ascendente)
+                    const sortedVtrNames = Object.keys(vtrGroups).sort((a, b) => {
+                      const isCpuA = a.toLowerCase().includes("cpu");
+                      const isCpuB = b.toLowerCase().includes("cpu");
+                      if (isCpuA && !isCpuB) return -1;
+                      if (!isCpuA && isCpuB) return 1;
+                      return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+                    });
+
                     return (
                       <div key={day} className={`group border-0 shadow-md rounded-2xl overflow-hidden bg-white print:break-inside-avoid print:mb-8 transition-all hover:shadow-lg ${isWeekend ? 'ring-1 ring-red-100' : ''}`}>
                         <div className={`px-6 py-4 flex items-center justify-between ${isWeekend ? 'bg-red-50/50' : 'bg-[#79A3B1]/5'}`}>
@@ -842,61 +962,182 @@ function AdminDashboardContent() {
                           </div>
                         </div>
 
-                        <div className="overflow-x-auto">
-                          <table className="w-full text-left border-collapse">
-                            <thead className="bg-gray-50/50 text-[10px] font-bold text-gray-400 uppercase tracking-widest border-y">
-                              <tr>
-                                <th className="px-6 py-3 w-16">Nº</th>
-                                <th className="px-6 py-3">Militar</th>
-                                <th className="px-6 py-3">RG / CPF</th>
-                                <th className="px-6 py-3">Função / Equipe</th>
-                                <th className="px-6 py-3 text-right print:hidden">Gestão</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100">
-                              {teamMembers.length === 0 ? (
-                                <tr>
-                                  <td colSpan={5} className="px-6 py-10 text-center text-gray-400 italic text-sm">
-                                    Nenhum militar alocado nesta equipe.
-                                  </td>
-                                </tr>
-                              ) : (
-                                teamMembers.map((m, index) => (
-                                  <tr key={m.id} className="hover:bg-gray-50/30 transition-colors">
-                                    <td className="px-6 py-4 font-black text-gray-300 text-xs">{index + 1}</td>
-                                    <td className="px-6 py-4">
-                                      <div className="flex flex-col">
-                                        <span className="text-sm font-black text-gray-900">{m.rank} {m.nickname}</span>
-                                      </div>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                      <div className="flex flex-col">
-                                        <span className="text-xs font-bold text-gray-700">RG: {formatRG(m.rg)}</span>
-                                        <span className="text-[10px] text-gray-400 font-medium">CPF: {formatCPF(m.taxId)}</span>
-                                      </div>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                      <div className="flex flex-wrap gap-1.5">
-                                        <span className="text-[10px] font-black bg-white border border-gray-200 px-2 py-0.5 rounded shadow-sm text-gray-600 uppercase">
-                                          {getUserJobFunctionOnDate(m, checkDayStr) || "Plantonista"}
+                        {ordinaryScaleLayout === 'vtr_pairs' ? (
+                          /* LAYOUT TÁTICO DE VIATURAS / DUPLAS */
+                          <div className="p-6 space-y-6">
+                            {sortedVtrNames.length === 0 ? (
+                              <div className="text-center text-gray-400 italic py-8 text-sm bg-gray-50/30 rounded-2xl border border-dashed border-gray-200">
+                                Nenhuma viatura com militares escalados para este dia.
+                              </div>
+                            ) : (
+                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {sortedVtrNames.map(vtrName => {
+                                  const members = vtrGroups[vtrName];
+                                  return (
+                                    <div key={vtrName} className="bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md transition-all overflow-hidden flex flex-col justify-between group/vtr">
+                                      {/* Header VTR */}
+                                      <div className="bg-[#79A3B1]/5 px-4 py-3 border-b flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                          <div className="h-6 w-6 rounded-md bg-[#79A3B1]/10 flex items-center justify-center text-[#79A3B1]">
+                                            <UsersRound className="h-3.5 w-3.5" />
+                                          </div>
+                                          <span className="text-xs font-black text-gray-800 uppercase tracking-wider font-mono">{vtrName}</span>
+                                        </div>
+                                        <span className="text-[9px] font-black bg-[#79A3B1]/20 text-[#79A3B1] px-2 py-0.5 rounded-full uppercase">
+                                          {members.length} PM
                                         </span>
                                       </div>
-                                    </td>
-                                    <td className="px-6 py-4 text-right print:hidden">
-                                      <Button
-                                        variant="ghost" size="sm"
-                                        className="h-8 text-[#79A3B1] hover:bg-[#79A3B1]/10 font-bold text-[10px] uppercase tracking-wider"
-                                        onClick={() => setEditingUser(m)}
-                                      >
-                                        <Edit3 className="h-3.5 w-3.5 mr-1" /> Editar
-                                      </Button>
+
+                                      {/* Integrantes guarnição */}
+                                      <div className="p-3 space-y-2 flex-1">
+                                        {members.map(m => {
+                                          const jobFunc = getUserJobFunctionOnDate(m, checkDayStr) || "Plantonista";
+                                          const isCmte = jobFunc.toLowerCase().includes("comandante") || jobFunc.toLowerCase().includes("cpu");
+                                          const isMot = jobFunc.toLowerCase().includes("motorista");
+
+                                          return (
+                                            <div key={m.id} className="flex items-center justify-between gap-2 p-2 bg-gray-50/50 border border-gray-100/50 rounded-xl hover:bg-gray-50 transition-colors">
+                                              <div className="min-w-0 flex-1">
+                                                <span className="text-xs font-black text-gray-900 block truncate">
+                                                  {m.rank} {m.nickname}
+                                                </span>
+                                                <span className="text-[8px] font-semibold text-gray-400 block tracking-tighter">
+                                                  RG: {formatRG(m.rg)} | CPF: {formatCPF(m.taxId)}
+                                                </span>
+                                              </div>
+                                              <div className="flex items-center gap-1.5 shrink-0">
+                                                {isCmte ? (
+                                                  <span className="text-[8px] font-black bg-emerald-50 text-emerald-700 border border-emerald-200/50 px-2 py-0.5 rounded shadow-sm tracking-wider uppercase leading-none">
+                                                    CMTE
+                                                  </span>
+                                                ) : isMot ? (
+                                                  <span className="text-[8px] font-black bg-blue-50 text-blue-700 border border-blue-200/50 px-2 py-0.5 rounded shadow-sm tracking-wider uppercase leading-none">
+                                                    MOT
+                                                  </span>
+                                                ) : (
+                                                  <span className="text-[8px] font-black bg-gray-100 text-gray-600 border border-gray-200 px-2 py-0.5 rounded shadow-sm tracking-tight uppercase leading-none truncate max-w-[80px]">
+                                                    {jobFunc}
+                                                  </span>
+                                                )}
+                                                <Button
+                                                  variant="ghost" size="icon"
+                                                  className="h-6 w-6 text-[#79A3B1] hover:bg-[#79A3B1]/10 rounded-lg print:hidden opacity-0 group-hover/vtr:opacity-100 transition-opacity"
+                                                  onClick={() => setEditingUser(m)}
+                                                >
+                                                  <Edit3 className="h-3.5 w-3.5" />
+                                                </Button>
+                                              </div>
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+
+                            {/* Guarda do Quartel e Outros Apoios */}
+                            {nonVtrMembers.length > 0 && (
+                              <div className="space-y-3 pt-6 border-t border-gray-100 print:break-inside-avoid">
+                                <h4 className="text-[9px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
+                                  <Shield className="h-3.5 w-3.5 text-gray-400" />
+                                  Guarda do Quartel e Expediente ({nonVtrMembers.length})
+                                </h4>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                                  {nonVtrMembers
+                                    .sort((a, b) => {
+                                      const weightA = RANKS.indexOf(a.rank);
+                                      const weightB = RANKS.indexOf(b.rank);
+                                      if (weightA !== weightB) return weightB - weightA;
+                                      return (a.sortOrder ?? 999) - (b.sortOrder ?? 999);
+                                    })
+                                    .map(m => (
+                                      <div key={m.id} className="bg-gray-50/50 border border-gray-100 p-3 rounded-xl hover:bg-gray-50 transition-all flex items-center justify-between gap-3">
+                                        <div className="min-w-0">
+                                          <span className="text-xs font-black text-gray-800 block truncate">
+                                            {m.rank} {m.nickname}
+                                          </span>
+                                          <span className="text-[9px] font-semibold text-gray-400 block tracking-tighter">
+                                            RG: {formatRG(m.rg)} | CPF: {formatCPF(m.taxId)}
+                                          </span>
+                                        </div>
+                                        <div className="flex items-center gap-1 shrink-0">
+                                          <span className="text-[8px] font-black bg-white border border-gray-200 px-2 py-0.5 rounded shadow-sm text-gray-500 uppercase tracking-tight max-w-[90px] truncate leading-none">
+                                            {getUserJobFunctionOnDate(m, checkDayStr) || "Plantonista"}
+                                          </span>
+                                          <Button
+                                            variant="ghost" size="icon"
+                                            className="h-6 w-6 text-[#79A3B1] hover:bg-[#79A3B1]/10 rounded-lg print:hidden"
+                                            onClick={() => setEditingUser(m)}
+                                          >
+                                            <Edit3 className="h-3.5 w-3.5" />
+                                          </Button>
+                                        </div>
+                                      </div>
+                                    ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          /* TABELA SEQUENCIAL CLÁSSICA (POR ANTIGUIDADE) */
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-left border-collapse">
+                              <thead className="bg-gray-50/50 text-[10px] font-bold text-gray-400 uppercase tracking-widest border-y">
+                                <tr>
+                                  <th className="px-6 py-3 w-16">Nº</th>
+                                  <th className="px-6 py-3">Militar</th>
+                                  <th className="px-6 py-3">RG / CPF</th>
+                                  <th className="px-6 py-3">Função / Equipe</th>
+                                  <th className="px-6 py-3 text-right print:hidden">Gestão</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-gray-100">
+                                {teamMembers.length === 0 ? (
+                                  <tr>
+                                    <td colSpan={5} className="px-6 py-10 text-center text-gray-400 italic text-sm">
+                                      Nenhum militar alocado nesta equipe.
                                     </td>
                                   </tr>
-                                ))
-                              )}
-                            </tbody>
-                          </table>
-                        </div>
+                                ) : (
+                                  teamMembers.map((m, index) => (
+                                    <tr key={m.id} className="hover:bg-gray-50/30 transition-colors">
+                                      <td className="px-6 py-4 font-black text-gray-300 text-xs">{index + 1}</td>
+                                      <td className="px-6 py-4">
+                                        <div className="flex flex-col">
+                                          <span className="text-sm font-black text-gray-900">{m.rank} {m.nickname}</span>
+                                        </div>
+                                      </td>
+                                      <td className="px-6 py-4">
+                                        <div className="flex flex-col">
+                                          <span className="text-xs font-bold text-gray-700">RG: {formatRG(m.rg)}</span>
+                                          <span className="text-[10px] text-gray-400 font-medium">CPF: {formatCPF(m.taxId)}</span>
+                                        </div>
+                                      </td>
+                                      <td className="px-6 py-4">
+                                        <div className="flex flex-wrap gap-1.5">
+                                          <span className="text-[10px] font-black bg-white border border-gray-200 px-2 py-0.5 rounded shadow-sm text-gray-600 uppercase">
+                                            {getUserJobFunctionOnDate(m, checkDayStr) || "Plantonista"}
+                                          </span>
+                                        </div>
+                                      </td>
+                                      <td className="px-6 py-4 text-right print:hidden">
+                                        <Button
+                                          variant="ghost" size="sm"
+                                          className="h-8 text-[#79A3B1] hover:bg-[#79A3B1]/10 font-bold text-[10px] uppercase tracking-wider"
+                                          onClick={() => setEditingUser(m)}
+                                        >
+                                          <Edit3 className="h-3.5 w-3.5 mr-1" /> Editar
+                                        </Button>
+                                      </td>
+                                    </tr>
+                                  ))
+                                )}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
                       </div>
                     );
                   })}
@@ -924,7 +1165,19 @@ function AdminDashboardContent() {
               </CardHeader>
               <CardContent className="p-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {usersList.filter(u => u.workTeam === 'ADM').map(m => (
+                  {usersList
+                    .filter(u => u.workTeam === 'ADM')
+                    .sort((a, b) => {
+                      const weightA = RANKS.indexOf(a.rank);
+                      const weightB = RANKS.indexOf(b.rank);
+                      if (weightA !== weightB) {
+                        return weightB - weightA;
+                      }
+                      const orderA = a.sortOrder ?? 999;
+                      const orderB = b.sortOrder ?? 999;
+                      return orderA - orderB;
+                    })
+                    .map(m => (
                     <div key={m.id} className="group bg-white border border-gray-100 p-4 rounded-2xl shadow-sm hover:shadow-md transition-all flex items-center gap-4">
                       <div className="h-12 w-12 rounded-xl bg-gray-50 flex items-center justify-center border border-gray-100 group-hover:bg-[#79A3B1]/10 transition-colors">
                         <Users className="h-6 w-6 text-[#79A3B1]" />
@@ -1730,6 +1983,17 @@ function AdminDashboardContent() {
               </select>
             </div>
 
+            <div className="space-y-1">
+              <Label className="text-xs font-semibold text-gray-600">Viatura (VTR) Atual</Label>
+              <Input
+                type="text"
+                placeholder="Ex: VTR 3915"
+                className="w-full p-2.5 border rounded-lg text-sm focus-visible:ring-[#79A3B1]"
+                value={newUserForm.vtr || ""}
+                onChange={(e) => setNewUserForm({ ...newUserForm, vtr: e.target.value })}
+              />
+            </div>
+
             {newUserForm.workTeam === "Afastado" && (
               <div className="space-y-1 animate-in fade-in slide-in-from-top-2 duration-300">
                 <Label className="text-xs font-semibold text-orange-600">Motivo do Afastamento</Label>
@@ -2216,6 +2480,25 @@ function AdminDashboardContent() {
               </div>
             </div>
 
+            {/* Ordinary Scale Layout Option */}
+            <div className="space-y-3 pt-4 border-t border-gray-50">
+              <Label className="text-[10px] font-black text-[#79A3B1] uppercase tracking-widest flex items-center gap-2">
+                <ClipboardList className="h-3 w-3" /> Disposição da Escala Ordinária
+              </Label>
+              <div className="space-y-1.5">
+                <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Modelo de Exibição</Label>
+                <select
+                  value={ordinaryScaleLayout}
+                  onChange={(e: any) => setOrdinaryScaleLayout(e.target.value as any)}
+                  className="w-full h-9 p-2 border rounded-lg text-xs bg-white focus:ring-2 focus:ring-[#79A3B1] outline-none font-bold text-gray-800"
+                >
+                  <option value="seniority">Ordenação por Antiguidade (Tabela)</option>
+                  <option value="vtr_pairs">Agrupamento por VTR / Duplas (Cards)</option>
+                </select>
+                <p className="text-[9px] text-gray-400 leading-tight">Escolha como a escala ordinária do batalhão será disposta. O modo cards agrupa os militares por guarnição/viatura.</p>
+              </div>
+            </div>
+
             {/* Volunteer Limits */}
             <div className="space-y-3 pt-4 border-t border-gray-50">
               <Label className="text-[10px] font-black text-[#79A3B1] uppercase tracking-widest flex items-center gap-2">
@@ -2442,6 +2725,17 @@ function AdminDashboardContent() {
               </select>
             </div>
 
+            <div className="space-y-1">
+              <Label className="text-xs font-semibold text-gray-600">Viatura (VTR) Atual</Label>
+              <Input
+                type="text"
+                placeholder="Ex: VTR 3915"
+                className="p-2.5 border rounded-lg text-sm focus-visible:ring-[#79A3B1]"
+                value={editingUser.vtr || ""}
+                onChange={(e) => setEditingUser({ ...editingUser, vtr: e.target.value })}
+              />
+            </div>
+
             {(() => {
               const originalUser = usersList.find(u => u.id === editingUser.id);
               const originalTeam = originalUser?.workTeam;
@@ -2452,12 +2746,17 @@ function AdminDashboardContent() {
               // Mostra a transição se mudou de equipe ou de função, contanto que esteja em uma equipe ativa
               const showTransition = (isTeamChanged || isJobFunctionChanged) && 
                 activeTeams.includes(editingUser.workTeam) && 
-                activeTeams.includes(originalTeam || "");
+                (activeTeams.includes(originalTeam || "") || originalTeam === "Afastado");
               
               if (!showTransition) return null;
+              
+              const isComingFromLeave = originalTeam === "Afastado";
+              
               return (
                 <div className="space-y-1 animate-in fade-in slide-in-from-top-2 duration-300 bg-blue-50/50 p-3 rounded-xl border border-blue-100">
-                  <Label className="text-xs font-semibold text-blue-600">Data de Início na Nova Equipe/Função</Label>
+                  <Label className="text-xs font-semibold text-blue-600">
+                    {isComingFromLeave ? "Data de Retorno e Início na Nova Equipe/Função" : "Data de Início na Nova Equipe/Função"}
+                  </Label>
                   <Input
                     type="date"
                     className="w-full p-2.5 border rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all focus-visible:ring-blue-500"
@@ -2469,26 +2768,13 @@ function AdminDashboardContent() {
                     onChange={(e) => setEditingUser({ ...editingUser, teamTransitionDate: e.target.value })}
                   />
                   <span className="text-[9px] text-blue-500 block leading-tight font-medium mt-1">
-                    O militar figurará na equipe antiga ({originalTeam}) e na função antiga até o dia anterior a esta data, e na nova equipe ({editingUser.workTeam}) com a nova função a partir desta data.
+                    {isComingFromLeave 
+                      ? `O militar retornará do afastamento e figurará na nova equipe (${editingUser.workTeam}) com a nova função a partir desta data.`
+                      : `O militar figurará na equipe antiga (${originalTeam}) e na função antiga até o dia anterior a esta data, e na nova equipe (${editingUser.workTeam}) com a nova função a partir desta data.`}
                   </span>
                 </div>
               );
             })()}
-
-            {editingUser.workTeam !== "Afastado" && editingUser.workTeam !== "Transferido" && (
-              <div className="space-y-1 animate-in fade-in slide-in-from-top-2 duration-300">
-                <Label className="text-xs font-semibold text-gray-600">Data de Retorno do Afastamento (Opcional)</Label>
-                <Input
-                  type="date"
-                  className="w-full p-2.5 border rounded-lg text-sm focus-visible:ring-[#79A3B1]"
-                  value={editingUser.returnDate || ""}
-                  onChange={(e) => setEditingUser({ ...editingUser, returnDate: e.target.value })}
-                />
-                <span className="text-[10px] text-gray-400 block leading-tight">
-                  Se preenchida, o militar só figurará nas escalas e poderá se voluntariar a partir deste dia.
-                </span>
-              </div>
-            )}
 
             {editingUser.workTeam === "Afastado" && (
               <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-300 bg-orange-50/50 p-3 rounded-xl border border-orange-100">

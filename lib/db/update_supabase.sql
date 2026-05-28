@@ -27,6 +27,10 @@ ALTER TABLE settings DISABLE ROW LEVEL SECURITY;
 ALTER TABLE schedules DISABLE ROW LEVEL SECURITY;
 ALTER TABLE audit_logs DISABLE ROW LEVEL SECURITY;
 
+-- 3. ADICIONAR COLUNAS PARA SUPORTE A VIATURA (VTR) E DUPLAS
+ALTER TABLE settings ADD COLUMN IF NOT EXISTS ordinary_scale_layout TEXT DEFAULT 'seniority';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS vtr TEXT;
+
 -- =====================================================================
 -- FIM DO SCRIPT
 -- =====================================================================
