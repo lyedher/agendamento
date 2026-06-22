@@ -30,6 +30,16 @@ export default function AgendamentoPage() {
       [scheduleId]: !prev[scheduleId]
     }));
   };
+
+  const changeMonth = (newMonth: Date) => {
+    setCurrentMonth(newMonth);
+    const today = new Date();
+    if (newMonth.getMonth() === today.getMonth() && newMonth.getFullYear() === today.getFullYear()) {
+      setSelectedDate(today);
+    } else {
+      setSelectedDate(new Date(newMonth.getFullYear(), newMonth.getMonth(), 1));
+    }
+  };
  
   useEffect(() => {
     loadData();
@@ -192,12 +202,26 @@ export default function AgendamentoPage() {
           </CardHeader>
           <CardContent className="p-6">
             <div className="flex items-center justify-between gap-2 mb-6">
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-10 w-10 border-gray-200 hover:bg-gray-50 flex items-center justify-center shrink-0"
+                type="button"
+                onClick={() => {
+                  const d = new Date(currentMonth);
+                  d.setMonth(d.getMonth() - 1);
+                  changeMonth(d);
+                }}
+              >
+                <ChevronLeft className="h-4 w-4 text-gray-600" />
+              </Button>
+
               <Select 
                 value={currentMonth.getMonth().toString()} 
                 onValueChange={(val) => {
                   const d = new Date(currentMonth);
                   d.setMonth(parseInt(val));
-                  setCurrentMonth(d);
+                  changeMonth(d);
                 }}
               >
                 <SelectTrigger className="flex-1 bg-white border-gray-200">
@@ -217,7 +241,7 @@ export default function AgendamentoPage() {
                 onValueChange={(val) => {
                   const d = new Date(currentMonth);
                   d.setFullYear(parseInt(val));
-                  setCurrentMonth(d);
+                  changeMonth(d);
                 }}
               >
                 <SelectTrigger className="w-[100px] bg-white border-gray-200">
@@ -230,6 +254,20 @@ export default function AgendamentoPage() {
                   })}
                 </SelectContent>
               </Select>
+
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-10 w-10 border-gray-200 hover:bg-gray-50 flex items-center justify-center shrink-0"
+                type="button"
+                onClick={() => {
+                  const d = new Date(currentMonth);
+                  d.setMonth(d.getMonth() + 1);
+                  changeMonth(d);
+                }}
+              >
+                <ChevronRight className="h-4 w-4 text-gray-600" />
+              </Button>
             </div>
 
             <div className="grid grid-cols-7 gap-2">
