@@ -303,8 +303,8 @@ export function mapDbToSettings(dbRow: any): AppSettings {
     unitId: dbRow.unit_id,
     ac4Rates: dbRow.ac4_rates ? (typeof dbRow.ac4_rates === 'string' ? JSON.parse(dbRow.ac4_rates) : dbRow.ac4_rates) : { blueDay: 26.47, blueNight: 29.8, redDay: 36.41, redNight: 41.38 },
     maxMonthlySlots: dbRow.max_monthly_slots ?? 10,
-    openDateTime: dbRow.open_date_time || new Date().toISOString(),
-    closeDateTime: dbRow.close_date_time || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+    openDateTime: dbRow.open_date_time || "",
+    closeDateTime: dbRow.close_date_time || "",
     inviteCode: dbRow.invite_code || 'stiv',
     ordinaryScaleLayout: dbRow.ordinary_scale_layout || 'seniority'
   };

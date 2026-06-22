@@ -648,10 +648,10 @@ export async function volunteerToSchedule(scheduleId: string, userId: string) {
     const now = new Date();
     
     // Check window
-    if (now < new Date(settings.openDateTime)) {
+    if (settings.openDateTime && now < new Date(settings.openDateTime)) {
       throw new Error(`O agendamento ainda não está aberto para esta unidade. Abre em: ${new Date(settings.openDateTime).toLocaleString('pt-BR')}`);
     }
-    if (now > new Date(settings.closeDateTime)) {
+    if (settings.closeDateTime && now > new Date(settings.closeDateTime)) {
       throw new Error("O período de agendamento desta unidade já foi encerrado.");
     }
     

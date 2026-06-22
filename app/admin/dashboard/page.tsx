@@ -195,16 +195,22 @@ function AdminDashboardContent() {
         const d = new Date(utcStr);
         if (isNaN(d.getTime())) return "";
         try {
-          const formatter = new Intl.DateTimeFormat('sv-SE', {
+          const formatter = new Intl.DateTimeFormat('en-US', {
             timeZone: 'America/Sao_Paulo',
             year: 'numeric',
             month: '2-digit',
             day: '2-digit',
             hour: '2-digit',
             minute: '2-digit',
-            hour12: false
+            hour12: false,
+            hourCycle: 'h23'
           });
-          return formatter.format(d).replace(' ', 'T').slice(0, 16);
+          const parts = formatter.formatToParts(d);
+          const partValues: Record<string, string> = {};
+          for (const p of parts) {
+            partValues[p.type] = p.value;
+          }
+          return `${partValues.year}-${partValues.month}-${partValues.day}T${partValues.hour}:${partValues.minute}`;
         } catch (e) {
           const tzOffset = d.getTimezoneOffset() * 60000;
           const localDate = new Date(d.getTime() - tzOffset);
@@ -2390,10 +2396,12 @@ function AdminDashboardContent() {
             <div className="flex items-center gap-2">
               {(() => {
                 const now = new Date();
-                const isOpen = schedulingWindow.openDateTime && schedulingWindow.closeDateTime ? (
-                  now >= new Date(schedulingWindow.openDateTime) &&
-                  now <= new Date(schedulingWindow.closeDateTime)
-                ) : false;
+                const isOpen = !schedulingWindow.openDateTime && !schedulingWindow.closeDateTime
+                  ? true
+                  : (schedulingWindow.openDateTime && schedulingWindow.closeDateTime ? (
+                      now >= new Date(schedulingWindow.openDateTime) &&
+                      now <= new Date(schedulingWindow.closeDateTime)
+                    ) : false);
                 return (
                   <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-tighter ${isOpen ? 'bg-emerald-100 text-emerald-700' : 'bg-orange-100 text-orange-700'}`}>
                     {isOpen ? "Aberto" : "Fechado"}

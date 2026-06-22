@@ -63,7 +63,7 @@ export default function AgendamentoPage() {
     new Date(s.startTime).getFullYear() === currentYear
   ).length;
  
-  const isWindowOpen = settings ? (
+  const isWindowOpen = settings && settings.openDateTime && settings.closeDateTime ? (
     new Date() >= new Date(settings.openDateTime) && 
     new Date() <= new Date(settings.closeDateTime)
   ) : true;
@@ -151,9 +151,13 @@ export default function AgendamentoPage() {
                   {isWindowOpen ? 'Agendamento Aberto' : 'Agendamento Fechado'}
                 </p>
                 <p className="text-xs text-gray-500 font-medium">
-                  {isWindowOpen 
-                    ? `Encerra em: ${new Date(settings.closeDateTime).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}`
-                    : `Abre em: ${new Date(settings.openDateTime).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}`}
+                  {settings.openDateTime && settings.closeDateTime ? (
+                    isWindowOpen 
+                      ? `Encerra em: ${new Date(settings.closeDateTime).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}`
+                      : `Abre em: ${new Date(settings.openDateTime).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}`
+                  ) : (
+                    'Sem restrições de prazo'
+                  )}
                 </p>
               </div>
             </CardContent>
